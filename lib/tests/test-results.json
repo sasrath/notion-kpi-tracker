@@ -1,0 +1,179 @@
+{
+  "timestamp": "2026-03-23T02:43:29.056Z",
+  "environment": "http://localhost:3000",
+  "summary": {
+    "total": 24,
+    "passed": 20,
+    "failed": 4
+  },
+  "tests": [
+    {
+      "id": "TC-01",
+      "name": "Health endpoint responds",
+      "status": "PASS",
+      "ms": 4921,
+      "detail": "AI=OK, Notion=OK"
+    },
+    {
+      "id": "TC-02",
+      "name": "Notion MCP connection is active",
+      "status": "PASS",
+      "ms": 3058,
+      "detail": "MCP connected — bot: KPI Tracker"
+    },
+    {
+      "id": "TC-03",
+      "name": "Notion databases are accessible",
+      "status": "PASS",
+      "ms": 2662,
+      "detail": "clients:OK, reports:OK, kpis:OK"
+    },
+    {
+      "id": "TC-04",
+      "name": "Google Gemini AI is connected",
+      "status": "PASS",
+      "ms": 3447,
+      "detail": "Google Gemini connected"
+    },
+    {
+      "id": "TC-05",
+      "name": "Models endpoint returns all models",
+      "status": "FAIL",
+      "ms": 197,
+      "detail": "Unexpected token 'I', \"Internal S\"... is not valid JSON"
+    },
+    {
+      "id": "TC-06",
+      "name": "Google models are available",
+      "status": "FAIL",
+      "ms": 0,
+      "detail": "No Google models available"
+    },
+    {
+      "id": "TC-07",
+      "name": "Anthropic models show unavailable (no API key)",
+      "status": "PASS",
+      "ms": 0,
+      "detail": "0 Anthropic models correctly marked unavailable"
+    },
+    {
+      "id": "TC-08",
+      "name": "Default model is set",
+      "status": "FAIL",
+      "ms": 55,
+      "detail": "Unexpected token 'I', \"Internal S\"... is not valid JSON"
+    },
+    {
+      "id": "TC-09",
+      "name": "Clients endpoint returns client list",
+      "status": "PASS",
+      "ms": 1016,
+      "detail": "2 clients: Apple, Intel"
+    },
+    {
+      "id": "TC-10",
+      "name": "KPIs endpoint returns data",
+      "status": "PASS",
+      "ms": 1111,
+      "detail": "71 KPIs loaded"
+    },
+    {
+      "id": "TC-11",
+      "name": "KPIs have required fields",
+      "status": "PASS",
+      "ms": 0,
+      "detail": "All required fields present in 71 KPIs"
+    },
+    {
+      "id": "TC-12",
+      "name": "KPIs are sorted by year desc then quarter desc",
+      "status": "PASS",
+      "ms": 0,
+      "detail": "Sort order verified"
+    },
+    {
+      "id": "TC-13",
+      "name": "Ingest rejects missing fields",
+      "status": "PASS",
+      "ms": 191,
+      "detail": "Missing required fields: url, clientName, quarter, year."
+    },
+    {
+      "id": "TC-14",
+      "name": "Ingest rejects invalid quarter",
+      "status": "PASS",
+      "ms": 5,
+      "detail": "Quarter must be Q1, Q2, Q3, or Q4."
+    },
+    {
+      "id": "TC-15",
+      "name": "Ingest Apple Q1 2025 earnings report via URL",
+      "status": "FAIL",
+      "ms": 16301,
+      "detail": "AI extraction failed: Extraction failed after 2 attempts: Unexpected end of JSON input"
+    },
+    {
+      "id": "TC-16",
+      "name": "Custom KPI rejects missing fields",
+      "status": "PASS",
+      "ms": 172,
+      "detail": "Validation working"
+    },
+    {
+      "id": "TC-17",
+      "name": "Save custom KPI: Customer Satisfaction Score",
+      "status": "PASS",
+      "ms": 752,
+      "detail": "Custom KPI saved: undefined..."
+    },
+    {
+      "id": "TC-18",
+      "name": "Delete rejects empty IDs",
+      "status": "PASS",
+      "ms": 148,
+      "detail": "Validation working"
+    },
+    {
+      "id": "TC-19",
+      "name": "Delete rejects more than 100 IDs",
+      "status": "PASS",
+      "ms": 4,
+      "detail": "Limit validation working"
+    },
+    {
+      "id": "TC-20",
+      "name": "Query: Which client had the highest revenue?",
+      "status": "PASS",
+      "ms": 3232,
+      "detail": "Apple had the highest revenue, reporting $124,300M ($124.3B) in Q1 2025...."
+    },
+    {
+      "id": "TC-21",
+      "name": "Re-fetch KPIs after ingestion shows new data",
+      "status": "PASS",
+      "ms": 2872,
+      "detail": "KPIs count same or less (71), Notion may need more time to index"
+    },
+    {
+      "id": "TC-22",
+      "name": "Re-fetch clients after ingestion",
+      "status": "PASS",
+      "ms": 918,
+      "detail": "2 clients: Apple, Intel"
+    },
+    {
+      "id": "TC-23",
+      "name": "Non-existent API route returns 404",
+      "status": "PASS",
+      "ms": 304,
+      "detail": "404 returned correctly"
+    },
+    {
+      "id": "TC-24",
+      "name": "Ingest with invalid URL is handled",
+      "status": "PASS",
+      "ms": 16,
+      "detail": "Status 422: Invalid or unsafe URL provided."
+    }
+  ]
+}
