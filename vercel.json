@@ -1,0 +1,20 @@
+{
+  "framework": "nextjs",
+  "functions": {
+    "app/api/ingest/route.js": {
+      "maxDuration": 60
+    },
+    "app/api/ingest/confirm/route.js": {
+      "maxDuration": 30
+    },
+    "app/api/upload/route.js": {
+      "maxDuration": 60
+    },
+    "app/api/forecast/route.js": {
+      "maxDuration": 60
+    },
+    "app/api/query/route.js": {
+      "maxDuration": 30
+    }
+  }
+}
