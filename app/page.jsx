@@ -859,7 +859,7 @@ export default function HomePage() {
     setSelectedModel(modelId);
   };
 
-  // Fetch AI revenue forecast (all clients, cached)
+  // Fetch AI revenue forecast for ALL clients (once on load, or on Refresh)
   const fetchForecast = useCallback(async () => {
     setForecastLoading(true);
     setForecastError(null);
@@ -884,7 +884,7 @@ export default function HomePage() {
     setForecastLoading(false);
   }, [selectedModel]);
 
-  // Auto-fetch forecast once when data and model are ready
+  // Auto-fetch forecast once when data + model are ready
   useEffect(() => {
     if (kpis.length > 0 && clients.length > 0 && selectedModel && !forecastFetchedRef.current) {
       fetchForecast();
@@ -928,6 +928,15 @@ export default function HomePage() {
   const summary   = getLatestSummary(filteredKPIs, clients, selectedClientId);
   const { chartData, clientNames } = getRevenueTrend(filteredKPIs, clients);
   const { chartData: forecastChartData, clientNames: forecastClients } = buildForecastChartData(filteredKPIs, clients, forecasts);
+  // Filter reasoning text to match the selected client
+  const visibleForecasts = selectedClientId
+    ? forecasts.filter((f) => {
+        const selectedName = clients.find((c) => c.id === selectedClientId)?.name ?? "";
+        const fcName = (f.client ?? "").toLowerCase();
+        const selLower = selectedName.toLowerCase();
+        return fcName === selLower || fcName.includes(selLower) || selLower.includes(fcName);
+      })
+    : forecasts;
   const { chartData: marginData, seriesNames: marginSeries } = getMarginTrend(filteredKPIs, clients);
   const { chartData: epsData, clientNames: epsClients } = getEPSTrend(filteredKPIs, clients);
   const kpiDistribution = getKPIDistribution(filteredKPIs);
@@ -1115,62 +1124,95 @@ export default function HomePage() {
                   )}
                 </div>
 
-                {/* Revenue Forecast (AI) */}
+                {/* Right panel: Forecast (individual client) or Revenue by Client (all clients) */}
                 <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-sm font-bold text-slate-700">Revenue Forecast (AI)</h3>
-                    <button
-                      onClick={fetchForecast}
-                      disabled={forecastLoading}
-                      className="text-[11px] px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 transition"
-                    >
-                      {forecastLoading ? "Forecasting…" : "Refresh"}
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-slate-400 mb-4">Previous + Latest + AI-predicted next quarter</p>
-                  {forecastLoading ? (
-                    <div className="flex items-center justify-center py-16">
-                      <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-                      <span className="ml-2 text-xs text-slate-400">AI forecasting…</span>
-                    </div>
-                  ) : forecastError ? (
-                    <p className="text-sm text-red-400 text-center py-10">{forecastError}</p>
-                  ) : forecastChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={280}>
-                      <BarChart data={forecastChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                        <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip
-                          contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                          formatter={(value, name, props) => {
-                            const isForecast = props.payload._forecast;
-                            return [`$${value?.toLocaleString()}M${isForecast ? " (forecast)" : ""}`, name];
-                          }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: 11 }} />
-                        {forecastClients.map((name, i) => (
-                          <Bar
-                            key={name}
-                            dataKey={name}
-                            fill={CHART_COLORS[i % CHART_COLORS.length]}
-                            radius={[6, 6, 0, 0]}
-                            animationDuration={800}
-                          />
-                        ))}
-                      </BarChart>
-                    </ResponsiveContainer>
+                  {selectedClientId ? (
+                    <>
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-bold text-slate-700">Revenue Forecast (AI)</h3>
+                        <button
+                          onClick={() => { forecastFetchedRef.current = false; fetchForecast(); }}
+                          disabled={forecastLoading}
+                          className="text-[11px] px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 transition"
+                        >
+                          {forecastLoading ? "Forecasting…" : "Refresh"}
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mb-4">Historical + AI-predicted next quarter</p>
+                      {forecastLoading ? (
+                        <div className="flex items-center justify-center py-16">
+                          <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                          <span className="ml-2 text-xs text-slate-400">AI forecasting…</span>
+                        </div>
+                      ) : forecastError ? (
+                        <p className="text-sm text-red-400 text-center py-10">{forecastError}</p>
+                      ) : forecastChartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                          <BarChart data={forecastChartData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                            <YAxis tick={{ fontSize: 11 }} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                              formatter={(value, name, props) => {
+                                const isForecast = props.payload._forecast;
+                                return [`$${value?.toLocaleString()}M${isForecast ? " (forecast)" : ""}`, name];
+                              }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            {forecastClients.map((name, i) => (
+                              <Bar
+                                key={name}
+                                dataKey={name}
+                                fill={CHART_COLORS[i % CHART_COLORS.length]}
+                                radius={[6, 6, 0, 0]}
+                                animationDuration={800}
+                              />
+                            ))}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <p className="text-sm text-slate-400 text-center py-10">No revenue data for forecast</p>
+                      )}
+                      {visibleForecasts.length > 0 && (
+                        <div className="mt-3 space-y-1">
+                          {visibleForecasts.map((f, i) => (
+                            <p key={i} className="text-[11px] text-slate-500">
+                              <span className="font-medium text-slate-700">{f.client}</span>: {f.reasoning}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   ) : (
-                    <p className="text-sm text-slate-400 text-center py-10">No revenue data for forecast</p>
-                  )}
-                  {forecasts.length > 0 && (
-                    <div className="mt-3 space-y-1">
-                      {forecasts.map((f, i) => (
-                        <p key={i} className="text-[11px] text-slate-500">
-                          <span className="font-medium text-slate-700">{f.client}</span>: {f.reasoning}
-                        </p>
-                      ))}
-                    </div>
+                    <>
+                      <h3 className="text-sm font-bold text-slate-700 mb-4">Revenue by Client</h3>
+                      {chartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                          <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                            <YAxis tick={{ fontSize: 11 }} />
+                            <Tooltip
+                              contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                              formatter={(value, name) => [`$${value?.toLocaleString()}M`, name]}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            {clientNames.map((name, i) => (
+                              <Bar
+                                key={name}
+                                dataKey={name}
+                                fill={CHART_COLORS[i % CHART_COLORS.length]}
+                                radius={[6, 6, 0, 0]}
+                                animationDuration={800}
+                              />
+                            ))}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <p className="text-sm text-slate-400 text-center py-10">No revenue data available</p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
