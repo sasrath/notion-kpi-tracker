@@ -816,7 +816,7 @@ function QueryPanel({ selectedModel, demoData }) {
       )}
 
       {answer && (
-        <div className="bg-slate-50 rounded-xl px-5 py-4 text-sm text-slate-700 leading-relaxed border border-slate-100">
+        <div className="bg-slate-50 rounded-xl px-5 py-4 text-sm text-slate-700 leading-relaxed border border-slate-100 whitespace-pre-wrap">
           {answer}
         </div>
       )}
