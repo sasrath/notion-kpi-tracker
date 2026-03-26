@@ -31,7 +31,6 @@ Go to **Project Settings → Environment Variables** and add:
 | `NOTION_CLIENTS_DB_ID` | Clients database ID | Yes |
 | `NOTION_REPORTS_DB_ID` | Reports database ID | Yes |
 | `NOTION_KPIS_DB_ID` | KPIs database ID | Yes |
-| `JUDGES_PASSWORD` | Password for `/judges` page | Yes |
 
 > **Note**: `NOTION_MODE` and `VERCEL` are auto-set by Vercel — no need to add them.
 
@@ -46,7 +45,6 @@ Your app is now live at `https://notion-kpi-tracker-<hash>.vercel.app`. Test:
 | Route | What to check |
 |-------|---------------|
 | `/demo` | Static page loads with Intel/Apple/Nvidia data, no API calls |
-| `/judges` | Password prompt appears, correct password shows full dashboard |
 | `/` | Main dashboard loads, shows live Notion data |
 | `/api/health` | Returns `{ status: "ok" }` |
 
@@ -95,7 +93,6 @@ You have two options: deploy the full app at `sasrath.com`, or use subdomains/pa
 - Wait 1-5 minutes for DNS propagation
 - Visit `https://sasrath.com` — should show the main dashboard
 - Visit `https://sasrath.com/demo` — static demo page
-- Visit `https://sasrath.com/judges` — password-gated judges page
 
 ---
 
@@ -117,7 +114,7 @@ You have two options: deploy the full app at `sasrath.com`, or use subdomains/pa
 #### 2B.3 Verify
 
 - `https://kpi.sasrath.com/demo` → static showcase
-- `https://kpi.sasrath.com/judges` → password-gated full app
+- `https://kpi.sasrath.com/` → main dashboard (live Notion data)
 
 ---
 
@@ -125,16 +122,12 @@ You have two options: deploy the full app at `sasrath.com`, or use subdomains/pa
 
 | URL | Audience | Access |
 |-----|----------|--------|
-| `sasrath.com/demo` | Public / portfolio visitors | Open — static data only |
-| `sasrath.com/judges` | Hackathon judges | Password-protected — full AI features |
-| `sasrath.com/` | You (admin) | Full dashboard — same as judges but no banner |
+| `notion-kpi.sasrath.com` | Public / blog visitors | Open — `/demo` with static data |
+| `notion-kpi.sasrath.com/` | You (admin) | Full dashboard — live Notion data |
 
 ---
 
 ## Troubleshooting
-
-### "Password not configured on server"
-→ `JUDGES_PASSWORD` env var is missing in Vercel. Add it and redeploy.
 
 ### SSL certificate errors
 → Ensure Cloudflare proxy is set to **DNS only** (grey cloud) for the Vercel CNAME. After Vercel provisions its SSL cert (usually within minutes), you can re-enable the orange cloud if needed.

@@ -124,11 +124,11 @@ NOTION_KPIS_DB_ID=ghi789...           # From Step 4b
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3010](http://localhost:3010) in your browser.
 
 You should see the KPI Tracker dashboard — empty, ready for your first report.
 
-> **Dialogue:** "The app starts on port 3000. First load may take a few seconds as Next.js compiles."
+> **Dialogue:** "The app starts on port 3010. First load may take a few seconds as Next.js compiles."
 
 ---
 

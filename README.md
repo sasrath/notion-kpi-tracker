@@ -105,7 +105,7 @@ NOTION_KPIS_DB_ID=ghi789...          # KPIs database ID
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3010](http://localhost:3010)
 
 ---
 
@@ -141,6 +141,7 @@ notion-kpi-tracker/
 │   ├── layout.jsx              # Root layout
 │   ├── page.jsx                # Main dashboard (client component)
 │   ├── globals.css             # Tailwind + custom styles
+│   ├── demo/page.jsx           # Static demo page (Intel/Apple/Nvidia)
 │   ├── health/page.jsx         # Health check page
 │   └── api/
 │       ├── clients/route.js    # GET clients from Notion
@@ -158,11 +159,15 @@ notion-kpi-tracker/
 │   ├── llm.js                  # Multi-model AI (Gemini + Claude), safeParseJSON
 │   ├── notion.js               # Notion API client (direct SDK)
 │   ├── notion-mcp.js           # Notion MCP client (21 tools, hybrid)
-│   └── transforms.js           # 18 data transform functions for charts
+│   ├── transforms.js           # 18 data transform functions for charts
+│   ├── cache.js                # In-memory cache (5 min TTL) with invalidation
+│   └── demo-data.js            # Static demo datasets (Intel/Apple/Nvidia)
 ├── lib/tests/
+│   ├── test-e2e-full.mjs       # 65 comprehensive E2E API tests
+│   ├── test-dashboard-flow.mjs # 17 dashboard flow tests
 │   ├── test-charts.mjs         # 43 chart data assertions
 │   ├── test-json-repair.mjs    # 6 JSON truncation repair tests
-│   ├── test-e2e.mjs            # 25 end-to-end API tests
+│   ├── test-e2e.mjs            # Legacy end-to-end API tests
 │   └── test-mcp.mjs            # MCP connection tests
 ├── docs/
 │   ├── ARCHITECTURE.md         # System architecture (v2.0)
@@ -181,15 +186,15 @@ notion-kpi-tracker/
 ## 🧪 Testing
 
 ```bash
+# Comprehensive E2E tests (65 tests, requires running server)
+npm run dev &
+node lib/tests/test-e2e-full.mjs
+
 # Chart data transforms (43 assertions)
 node lib/tests/test-charts.mjs
 
 # JSON repair for truncated AI responses (6 tests)
 node lib/tests/test-json-repair.mjs
-
-# End-to-end API tests (25 tests, requires running server)
-npm run dev &
-node lib/tests/test-e2e.mjs
 ```
 
 ---
