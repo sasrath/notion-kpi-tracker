@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { saveCustomKPI } from "@/lib/notion";
+import { invalidateKPICache } from "@/lib/cache";
 
 const ALLOWED_UNITS = ["$M", "%", "$", "x", "days", "count", "other"];
 
@@ -23,7 +24,7 @@ export async function POST(request) {
   if (!ALLOWED_UNITS.includes(unit)) {
     return NextResponse.json({ error: `Unit must be one of: ${ALLOWED_UNITS.join(", ")}` }, { status: 400 });
   }
-  if (!["Q1", "Q2", "Q3", "Q4"].includes(quarter)) {
+  if (!["Q1", "Q2", "Q3", "Q4", "Annual"].includes(quarter)) {
     return NextResponse.json({ error: "Invalid quarter." }, { status: 400 });
   }
   if (year < 2000 || year > new Date().getFullYear()) {
@@ -35,6 +36,7 @@ export async function POST(request) {
 
   try {
     const pageId = await saveCustomKPI({ clientId, kpiName, value, unit, quarter, year, notes });
+    invalidateKPICache();
     return NextResponse.json({ success: true, pageId });
   } catch (err) {
     console.error("[/api/custom-kpi] Notion write error:", err.message);

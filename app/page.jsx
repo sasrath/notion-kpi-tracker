@@ -43,14 +43,21 @@ function Skeleton({ className = "" }) {
   return <div className={`skeleton ${className}`} />;
 }
 
-function Toast({ message, type = "success", onClose }) {
+function Toast({ message, type = "success", duration = 4000, onClose }) {
   useEffect(() => {
-    const t = setTimeout(onClose, 4000);
+    if (!duration) return; // 0 = persistent until replaced
+    const t = setTimeout(onClose, duration);
     return () => clearTimeout(t);
-  }, [onClose]);
+  }, [duration, onClose]);
   const colors = { success: "bg-green-600", error: "bg-red-600", info: "bg-blue-600" };
   return (
-    <div className={`fixed bottom-6 right-6 z-50 ${colors[type]} text-white px-5 py-3 rounded-xl shadow-xl text-sm max-w-sm`}>
+    <div className={`fixed bottom-6 right-6 z-50 ${colors[type]} text-white px-5 py-3 rounded-xl shadow-xl text-sm max-w-sm flex items-center gap-3`}>
+      {!duration && (
+        <svg className="animate-spin h-4 w-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      )}
       {message}
     </div>
   );
@@ -132,7 +139,7 @@ function AddReportPanel({ clients, onSuccess, selectedModel }) {
         fd.append("file", file);
         fd.append("clientName", form.clientName);
         fd.append("ticker", form.ticker);
-        fd.append("quarter", form.quarter);
+        fd.append("quarter", docType === "10-K" ? "Annual" : form.quarter);
         fd.append("year", form.year);
         fd.append("model", selectedModel);
         fd.append("docType", docType);
@@ -319,17 +326,19 @@ function AddReportPanel({ clients, onSuccess, selectedModel }) {
                 onChange={(e) => setForm({ ...form, ticker: e.target.value.toUpperCase() })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Quarter</label>
-                <select
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  value={form.quarter}
-                  onChange={(e) => setForm({ ...form, quarter: e.target.value })}
-                >
-                  {["Q1","Q2","Q3","Q4"].map((q) => <option key={q}>{q}</option>)}
-                </select>
-              </div>
+            <div className={mode === "upload" && docType === "10-K" ? "grid grid-cols-1 gap-3" : "grid grid-cols-2 gap-3"}>
+              {!(mode === "upload" && docType === "10-K") && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Quarter</label>
+                  <select
+                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    value={form.quarter}
+                    onChange={(e) => setForm({ ...form, quarter: e.target.value })}
+                  >
+                    {["Q1","Q2","Q3","Q4"].map((q) => <option key={q}>{q}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Year</label>
                 <input
@@ -606,6 +615,15 @@ function KPITable({ kpis, clients, selectedClientId, onDelete }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+      {deleting && (
+        <div className="px-6 py-2.5 bg-amber-50 border-b border-amber-200 flex items-center gap-2.5">
+          <svg className="animate-spin h-4 w-4 text-amber-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span className="text-xs font-semibold text-amber-800">Deleting records from Notion… please wait</span>
+        </div>
+      )}
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-slate-700">
@@ -623,7 +641,7 @@ function KPITable({ kpis, clients, selectedClientId, onDelete }) {
               disabled={deleting}
               className="bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg px-3 py-1.5"
             >
-              {deleting ? "Deleting..." : `Delete ${selected.size} selected`}
+              {deleting ? "Deleting…" : `Delete ${selected.size} selected`}
             </button>
           )}
         </div>
@@ -732,7 +750,7 @@ function KPITable({ kpis, clients, selectedClientId, onDelete }) {
 
 // ─── QUERY PANEL ─────────────────────────────────────────────────
 
-function QueryPanel({ selectedModel }) {
+function QueryPanel({ selectedModel, demoData }) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -745,7 +763,11 @@ function QueryPanel({ selectedModel }) {
     const res = await fetch("/api/query", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, model: selectedModel }),
+      body: JSON.stringify({
+        question,
+        model: selectedModel,
+        ...(demoData ? { kpis: demoData.kpis, clients: demoData.clients } : {}),
+      }),
     });
     const data = await res.json();
     setAnswer(data.answer ?? data.error);
@@ -804,7 +826,7 @@ function QueryPanel({ selectedModel }) {
 
 // ─── MAIN PAGE ───────────────────────────────────────────────────
 
-export default function HomePage() {
+export default function HomePage({ demoData } = {}) {
   const [clients, setClients] = useState([]);
   const [kpis, setKPIs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -820,6 +842,13 @@ export default function HomePage() {
   const forecastFetchedRef = useRef(false);
 
   const fetchData = useCallback(async () => {
+    if (demoData) {
+      setClients(demoData.clients);
+      setKPIs(demoData.kpis);
+      setLastSync(new Date());
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [cRes, kRes] = await Promise.all([
@@ -835,7 +864,7 @@ export default function HomePage() {
       showToast("Failed to load data from Notion.", "error");
     }
     setLoading(false);
-  }, []);
+  }, [demoData]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -867,7 +896,10 @@ export default function HomePage() {
       const res = await fetch("/api/forecast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: selectedModel }),
+        body: JSON.stringify({
+          model: selectedModel,
+          ...(demoData ? { kpis: demoData.kpis, clients: demoData.clients } : {}),
+        }),
       });
       const data = await res.json();
       if (data.error) {
@@ -891,8 +923,8 @@ export default function HomePage() {
     }
   }, [kpis.length, clients.length, selectedModel, fetchForecast]);
 
-  const showToast = (message, type = "success") => {
-    setToast({ message, type });
+  const showToast = (message, type = "success", duration = 4000) => {
+    setToast({ message, type, duration });
   };
 
   const handleSuccess = (msg) => {
@@ -903,6 +935,7 @@ export default function HomePage() {
 
   const handleDeleteKPIs = async (ids) => {
     if (!ids.length) return;
+    showToast(`Deleting ${ids.length} KPI record${ids.length > 1 ? "s" : ""}…`, "info", 0);
     try {
       const res = await fetch("/api/kpis/delete", {
         method: "POST",
@@ -924,6 +957,16 @@ export default function HomePage() {
 
   // Dashboard data — normalize units, deduplicate, then filter by selected client
   const cleanKPIs = deduplicateKPIs(kpis);
+
+  // Only show entities that have at least one KPI record
+  const clientIdsWithData = new Set(cleanKPIs.map((k) => k.clientId));
+  const activeClients = clients.filter((c) => clientIdsWithData.has(c.id));
+
+  // If the currently selected entity was just deleted down to zero records, reset to "All"
+  if (selectedClientId && !clientIdsWithData.has(selectedClientId)) {
+    setSelectedClientId(null);
+  }
+
   const filteredKPIs = selectedClientId ? cleanKPIs.filter((k) => k.clientId === selectedClientId) : cleanKPIs;
   const summary   = getLatestSummary(filteredKPIs, clients, selectedClientId);
   const { chartData, clientNames } = getRevenueTrend(filteredKPIs, clients);
@@ -1024,9 +1067,9 @@ export default function HomePage() {
                   !selectedClientId ? "bg-brand-500 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                All Clients
+                All Entities
               </button>
-              {clients.map((c) => (
+              {activeClients.map((c) => (
                 <button
                   key={c.id}
                   onClick={() => setSelectedClientId(c.id)}
@@ -1056,7 +1099,7 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Stats overview bar — only show on "All Clients" view */}
+            {/* Stats overview bar — only show on "All Entities" view */}
             {!loading && cleanKPIs.length > 0 && !selectedClientId && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-5 text-white">
@@ -1508,12 +1551,12 @@ export default function HomePage() {
           <CustomKPIPanel clients={clients} onSuccess={handleSuccess} />
         </div>
         <div className={activeTab === "query" ? "" : "hidden"}>
-          <QueryPanel selectedModel={selectedModel} />
+          <QueryPanel selectedModel={selectedModel} demoData={demoData} />
         </div>
       </div>
 
       {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+        <Toast message={toast.message} type={toast.type} duration={toast.duration} onClose={() => setToast(null)} />
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteKPIs } from "@/lib/notion";
+import { invalidateKPICache } from "@/lib/cache";
 
 export async function POST(request) {
   let body;
@@ -22,6 +23,8 @@ export async function POST(request) {
   try {
     const result = await deleteKPIs(ids);
     console.log(`[delete] Deleted ${result.deleted}, errors ${result.errors}`);
+    // Invalidate the KPI cache so the next Refresh fetches fresh data from Notion
+    invalidateKPICache();
     return NextResponse.json({ success: true, ...result });
   } catch (err) {
     console.error("[delete] Error:", err.message);

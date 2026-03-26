@@ -22,7 +22,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { question, model } = body;
+  const { question, model, kpis: inlineKpis, clients: inlineClients } = body;
 
   if (!question || typeof question !== "string") {
     return NextResponse.json({ error: "Question is required." }, { status: 400 });
@@ -38,7 +38,9 @@ export async function POST(request) {
   }
 
   try {
-    const [kpis, clients] = await Promise.all([getKPIs(), getClients()]);
+    const [kpis, clients] = (inlineKpis && inlineClients)
+      ? [inlineKpis, inlineClients]
+      : await Promise.all([getKPIs(), getClients()]);
     const result = await queryKPIs({ question, kpis, clients, model });
     queryCounts.set(ip, count + 1);
     return NextResponse.json(result);

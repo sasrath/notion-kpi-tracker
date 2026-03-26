@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { findOrCreateClient, createReport, saveKPIs } from "@/lib/notion";
+import { invalidateKPICache, invalidateClientCache } from "@/lib/cache";
 
 export async function POST(request) {
   let body;
@@ -35,6 +36,10 @@ export async function POST(request) {
     console.log(`[confirm] Saving ${kpis.length} KPIs...`);
     const kpiIds = await saveKPIs({ reportId, clientId, kpis, quarter, year });
     console.log(`[confirm] ✓ Saved ${kpiIds.length} KPIs`);
+
+    // Invalidate caches so the dashboard shows fresh data
+    invalidateKPICache();
+    invalidateClientCache();
 
     return NextResponse.json({
       success: true,

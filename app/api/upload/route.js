@@ -29,11 +29,12 @@ export async function POST(request) {
 
   const file = formData.get("file");
   const clientName = formData.get("clientName");
-  const quarter = formData.get("quarter");
+  const docType = formData.get("docType") || "Financial Document";
+  // 10-K is an annual filing — no quarter; default to "Annual"
+  const quarter = formData.get("quarter") || (docType === "10-K" ? "Annual" : null);
   const year = Number(formData.get("year"));
   const ticker = formData.get("ticker") || "";
   const model = formData.get("model") || "";
-  const docType = formData.get("docType") || "Financial Document";
 
   // Validate required fields
   if (!file || !clientName || !quarter || !year) {
@@ -43,8 +44,8 @@ export async function POST(request) {
     );
   }
 
-  if (!["Q1", "Q2", "Q3", "Q4"].includes(quarter)) {
-    return NextResponse.json({ error: "Quarter must be Q1, Q2, Q3, or Q4." }, { status: 400 });
+  if (!["Q1", "Q2", "Q3", "Q4", "Annual"].includes(quarter)) {
+    return NextResponse.json({ error: "Quarter must be Q1, Q2, Q3, Q4, or Annual." }, { status: 400 });
   }
 
   if (year < 2000 || year > new Date().getFullYear()) {

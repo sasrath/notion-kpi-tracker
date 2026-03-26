@@ -11,10 +11,12 @@ export async function POST(request) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const { model, clientId } = body;
+  const { model, clientId, kpis: inlineKpis, clients: inlineClients } = body;
 
   try {
-    const [rawKpis, clients] = await Promise.all([getKPIs(), getClients()]);
+    const [rawKpis, clients] = (inlineKpis && inlineClients)
+      ? [inlineKpis, inlineClients]
+      : await Promise.all([getKPIs(), getClients()]);
     const kpis = deduplicateKPIs(rawKpis);
     const filtered = clientId ? kpis.filter((k) => k.clientId === clientId) : kpis;
     const revenueByClient = getRevenueForecastInput(filtered, clients);

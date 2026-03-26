@@ -4,7 +4,7 @@
   "description": "AI-powered client quarterly performance tracker using Notion as backend",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --port 3010",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
