@@ -204,7 +204,7 @@ function AddReportPanel({ clients, onSuccess, selectedModel }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 p-6 flex flex-col gap-5">
-      <h2 className="text-lg font-bold text-slate-800">Add Client Report</h2>
+      <h2 className="text-lg font-bold text-slate-800">Add Entity Report</h2>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
@@ -304,15 +304,15 @@ function AddReportPanel({ clients, onSuccess, selectedModel }) {
             )}
 
             <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Client Name</label>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Entity Name</label>
               <input
                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 placeholder="Acme Corp"
                 value={form.clientName}
                 onChange={(e) => setForm({ ...form, clientName: e.target.value })}
-                list="client-list"
+                list="entity-list"
               />
-              <datalist id="client-list">
+              <datalist id="entity-list">
                 {clients.map((c) => <option key={c.id} value={c.name} />)}
               </datalist>
             </div>
@@ -471,13 +471,13 @@ function CustomKPIPanel({ clients, onSuccess }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Client *</label>
+          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Entity *</label>
           <select
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             value={form.clientId}
             onChange={(e) => setForm({ ...form, clientId: e.target.value })}
           >
-            <option value="">Select client…</option>
+            <option value="">Select entity…</option>
             {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
@@ -564,7 +564,7 @@ function CustomKPIPanel({ clients, onSuccess }) {
 
 const PAGE_SIZE = 20;
 
-function KPITable({ kpis, clients, selectedClientId, onDelete }) {
+function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll }) {
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState(new Set());
   const [deleting, setDeleting] = useState(false);
@@ -644,6 +644,13 @@ function KPITable({ kpis, clients, selectedClientId, onDelete }) {
               {deleting ? "Deleting…" : `Delete ${selected.size} selected`}
             </button>
           )}
+          <button
+            onClick={onDeleteAll}
+            disabled={deleting}
+            className="border border-red-300 text-red-500 hover:bg-red-50 disabled:opacity-50 text-xs font-semibold rounded-lg px-3 py-1.5"
+          >
+            Delete All
+          </button>
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -937,22 +944,35 @@ export default function HomePage({ demoData } = {}) {
     if (!ids.length) return;
     showToast(`Deleting ${ids.length} KPI record${ids.length > 1 ? "s" : ""}…`, "info", 0);
     try {
-      const res = await fetch("/api/kpis/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        showToast(data.error || "Delete failed.", "error");
-      } else {
-        showToast(`Deleted ${data.deleted} KPI(s).`);
-        // Remove deleted from local state immediately
-        setKPIs((prev) => prev.filter((k) => !ids.includes(k.id)));
+      // Batch in chunks of 100 to respect the API limit
+      const CHUNK = 100;
+      let totalDeleted = 0;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const chunk = ids.slice(i, i + CHUNK);
+        const res = await fetch("/api/kpis/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: chunk }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showToast(data.error || "Delete failed.", "error");
+          return;
+        }
+        totalDeleted += data.deleted;
       }
+      showToast(`Deleted ${totalDeleted} KPI(s).`);
+      setKPIs((prev) => prev.filter((k) => !ids.includes(k.id)));
     } catch {
       showToast("Failed to delete KPIs.", "error");
     }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!kpis.length) return;
+    if (!confirm(`Delete ALL ${kpis.length} KPI records from Notion? This cannot be undone.`)) return;
+    await handleDeleteKPIs(kpis.map((k) => k.id));
+    setSelectedClientId(null);
   };
 
   // Dashboard data — normalize units, deduplicate, then filter by selected client
@@ -1535,9 +1555,8 @@ export default function HomePage({ demoData } = {}) {
                 kpis={kpis}
                 clients={clients}
                 selectedClientId={selectedClientId}
-                onDelete={(ids) => {
-                  handleDeleteKPIs(ids);
-                }}
+                onDelete={(ids) => handleDeleteKPIs(ids)}
+                onDeleteAll={handleDeleteAll}
               />
             )}
           </div>
@@ -1548,7 +1567,7 @@ export default function HomePage({ demoData } = {}) {
           <AddReportPanel clients={clients} onSuccess={handleSuccess} selectedModel={selectedModel} />
         </div>
         <div className={activeTab === "custom" ? "" : "hidden"}>
-          <CustomKPIPanel clients={clients} onSuccess={handleSuccess} />
+          <CustomKPIPanel clients={activeClients} onSuccess={handleSuccess} />
         </div>
         <div className={activeTab === "query" ? "" : "hidden"}>
           <QueryPanel selectedModel={selectedModel} demoData={demoData} />
