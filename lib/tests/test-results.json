@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-25T17:31:01.198Z",
+  "timestamp": "2026-03-26T14:40:12.902Z",
   "environment": "http://localhost:3010",
   "summary": {
     "total": 65,
@@ -11,35 +11,35 @@
       "id": "TC-01",
       "name": "GET /api/health returns 200",
       "status": "PASS",
-      "ms": 4837,
+      "ms": 4441,
       "detail": "ok=true"
     },
     "TC-02": {
       "id": "TC-02",
       "name": "Health: Notion MCP connected",
       "status": "PASS",
-      "ms": 3485,
+      "ms": 3283,
       "detail": "MCP connected — bot: KPI Tracker"
     },
     "TC-03": {
       "id": "TC-03",
       "name": "Health: AI provider connected",
       "status": "PASS",
-      "ms": 3041,
+      "ms": 5453,
       "detail": "google: Google Gemini connected"
     },
     "TC-04": {
       "id": "TC-04",
       "name": "Health: All 3 databases accessible",
       "status": "PASS",
-      "ms": 4915,
+      "ms": 2585,
       "detail": "clients, reports, kpis"
     },
     "TC-05": {
       "id": "TC-05",
       "name": "GET /api/models returns model list",
       "status": "PASS",
-      "ms": 19,
+      "ms": 170,
       "detail": "6 models"
     },
     "TC-06": {
@@ -67,7 +67,7 @@
       "id": "TC-09",
       "name": "GET /api/clients returns array",
       "status": "PASS",
-      "ms": 8,
+      "ms": 625,
       "detail": "3 clients"
     },
     "TC-10": {
@@ -81,28 +81,28 @@
       "id": "TC-11",
       "name": "Clients: cache works on second request",
       "status": "PASS",
-      "ms": 6,
+      "ms": 14,
       "detail": "cached=true"
     },
     "TC-12": {
       "id": "TC-12",
       "name": "GET /api/kpis returns array",
       "status": "PASS",
-      "ms": 6,
-      "detail": "8 KPIs loaded"
+      "ms": 803,
+      "detail": "19 KPIs loaded"
     },
     "TC-13": {
       "id": "TC-13",
       "name": "KPIs: each has required fields",
       "status": "PASS",
       "ms": 0,
-      "detail": "All 8 KPIs valid"
+      "detail": "All 19 KPIs valid"
     },
     "TC-14": {
       "id": "TC-14",
       "name": "KPIs: sorted by year desc, quarter desc",
       "status": "PASS",
-      "ms": 0,
+      "ms": 1,
       "detail": "Sort verified"
     },
     "TC-15": {
@@ -110,7 +110,7 @@
       "name": "KPIs: no orphan records (all have clientId)",
       "status": "PASS",
       "ms": 0,
-      "detail": "All 8 linked to a client"
+      "detail": "All 19 linked to a client"
     },
     "TC-16": {
       "id": "TC-16",
@@ -123,56 +123,56 @@
       "id": "TC-17",
       "name": "KPIs: cache works on second request",
       "status": "PASS",
-      "ms": 6,
+      "ms": 16,
       "detail": "cached=true"
     },
     "TC-18": {
       "id": "TC-18",
       "name": "KPIs: filter by clientId (Intel)",
       "status": "PASS",
-      "ms": 556,
+      "ms": 459,
       "detail": "8 KPIs for Intel"
     },
     "TC-19": {
       "id": "TC-19",
-      "name": "KPIs: filter by quarter (Q4)",
+      "name": "KPIs: filter by quarter (Q1)",
       "status": "PASS",
-      "ms": 625,
-      "detail": "8 KPIs for Q4"
+      "ms": 510,
+      "detail": "11 KPIs for Q1"
     },
     "TC-20": {
       "id": "TC-20",
-      "name": "KPIs: filter by year (2025)",
+      "name": "KPIs: filter by year (2026)",
       "status": "PASS",
-      "ms": 818,
-      "detail": "8 KPIs for 2025"
+      "ms": 667,
+      "detail": "11 KPIs for 2026"
     },
     "TC-21": {
       "id": "TC-21",
       "name": "Ingest: rejects empty body",
       "status": "PASS",
-      "ms": 10,
+      "ms": 155,
       "detail": "400 returned"
     },
     "TC-22": {
       "id": "TC-22",
       "name": "Ingest: rejects missing clientName",
       "status": "PASS",
-      "ms": 5,
+      "ms": 15,
       "detail": "400 returned"
     },
     "TC-23": {
       "id": "TC-23",
       "name": "Ingest: rejects invalid quarter Q5",
       "status": "PASS",
-      "ms": 6,
+      "ms": 5,
       "detail": "Quarter must be Q1, Q2, Q3, or Q4."
     },
     "TC-24": {
       "id": "TC-24",
       "name": "Ingest: rejects year < 2000",
       "status": "PASS",
-      "ms": 4,
+      "ms": 5,
       "detail": "400 returned"
     },
     "TC-25": {
@@ -186,126 +186,126 @@
       "id": "TC-26",
       "name": "Confirm: rejects empty body",
       "status": "PASS",
-      "ms": 7,
+      "ms": 133,
       "detail": "400 returned"
     },
     "TC-27": {
       "id": "TC-27",
       "name": "Confirm: rejects missing kpis",
       "status": "PASS",
-      "ms": 6,
+      "ms": 20,
       "detail": "400 returned"
     },
     "TC-28": {
       "id": "TC-28",
       "name": "Custom KPI: rejects empty body",
       "status": "PASS",
-      "ms": 6,
+      "ms": 147,
       "detail": "400 returned"
     },
     "TC-29": {
       "id": "TC-29",
       "name": "Custom KPI: rejects missing fields",
       "status": "PASS",
-      "ms": 4,
+      "ms": 10,
       "detail": "400 returned"
     },
     "TC-30": {
       "id": "TC-30",
       "name": "Custom KPI: rejects invalid unit",
       "status": "PASS",
-      "ms": 4,
+      "ms": 13,
       "detail": "Unit must be one of: $M, %, $, x, days, count, other"
     },
     "TC-31": {
       "id": "TC-31",
       "name": "Custom KPI: rejects invalid quarter",
       "status": "PASS",
-      "ms": 3,
+      "ms": 6,
       "detail": "400 returned"
     },
     "TC-32": {
       "id": "TC-32",
       "name": "Custom KPI: accepts Annual quarter",
       "status": "PASS",
-      "ms": 347,
+      "ms": 341,
       "detail": "Status 500 (expected 200 or 500 for fake clientId)"
     },
     "TC-33": {
       "id": "TC-33",
       "name": "Custom KPI: rejects non-finite value",
       "status": "PASS",
-      "ms": 16,
+      "ms": 5,
       "detail": "400 returned"
     },
     "TC-34": {
       "id": "TC-34",
       "name": "Custom KPI: rejects name > 100 chars",
       "status": "PASS",
-      "ms": 7,
+      "ms": 5,
       "detail": "400 returned"
     },
     "TC-35": {
       "id": "TC-35",
       "name": "Delete: rejects empty body",
       "status": "PASS",
-      "ms": 6,
+      "ms": 122,
       "detail": "400 returned"
     },
     "TC-36": {
       "id": "TC-36",
       "name": "Delete: rejects empty ids array",
       "status": "PASS",
-      "ms": 6,
+      "ms": 3,
       "detail": "400 returned"
     },
     "TC-37": {
       "id": "TC-37",
       "name": "Delete: rejects > 100 ids",
       "status": "PASS",
-      "ms": 10,
+      "ms": 4,
       "detail": "400 returned"
     },
     "TC-38": {
       "id": "TC-38",
       "name": "Delete: rejects non-array ids",
       "status": "PASS",
-      "ms": 5,
+      "ms": 3,
       "detail": "400 returned"
     },
     "TC-39": {
       "id": "TC-39",
       "name": "Query: rejects missing question",
       "status": "PASS",
-      "ms": 8,
+      "ms": 142,
       "detail": "400 returned"
     },
     "TC-40": {
       "id": "TC-40",
       "name": "Query: rejects question > 500 chars",
       "status": "PASS",
-      "ms": 5,
+      "ms": 20,
       "detail": "400 returned"
     },
     "TC-41": {
       "id": "TC-41",
       "name": "Query: rejects injection attempt",
       "status": "PASS",
-      "ms": 7,
+      "ms": 4,
       "detail": "Blocked → Invalid query. Please ask a financial performance question."
     },
     "TC-42": {
       "id": "TC-42",
       "name": "Judges auth: rejects wrong password",
       "status": "PASS",
-      "ms": 8,
+      "ms": 122,
       "detail": "401 returned"
     },
     "TC-43": {
       "id": "TC-43",
       "name": "Judges auth: rejects empty password",
       "status": "PASS",
-      "ms": 4,
+      "ms": 5,
       "detail": "401 returned"
     },
     "TC-44": {
@@ -319,119 +319,119 @@
       "id": "TC-45",
       "name": "Cache: KPIs are cached after first fetch",
       "status": "PASS",
-      "ms": 3,
+      "ms": 5,
       "detail": "cached=true"
     },
     "TC-46": {
       "id": "TC-46",
       "name": "Cache: Clients are cached after first fetch",
       "status": "PASS",
-      "ms": 4,
+      "ms": 6,
       "detail": "cached=true"
     },
     "TC-47": {
       "id": "TC-47",
       "name": "Save test KPI for Apple",
       "status": "PASS",
-      "ms": 479,
-      "detail": "pageId=32e1368d..."
+      "ms": 596,
+      "detail": "pageId=32f1368d..."
     },
     "TC-48": {
       "id": "TC-48",
       "name": "Verify test KPI appears in fetch (may be slow due to Notion search index)",
       "status": "PASS",
-      "ms": 6564,
-      "detail": "Not yet indexed (Notion search delay) — save+delete cycle still proves data path"
+      "ms": 583,
+      "detail": "Found (attempt 1): E2E Test Metric=99.99 %"
     },
     "TC-49": {
       "id": "TC-49",
       "name": "Delete test KPI",
       "status": "PASS",
-      "ms": 813,
+      "ms": 1333,
       "detail": "Deleted 1"
     },
     "TC-50": {
       "id": "TC-50",
       "name": "Verify test KPI gone after delete",
       "status": "PASS",
-      "ms": 612,
+      "ms": 896,
       "detail": "Gone (confirmed)"
     },
     "TC-51": {
       "id": "TC-51",
       "name": "Forecast: rejects invalid body",
       "status": "PASS",
-      "ms": 11,
+      "ms": 209,
       "detail": "400 returned"
     },
     "TC-52": {
       "id": "TC-52",
       "name": "Forecast: returns forecasts from live data",
       "status": "PASS",
-      "ms": 5301,
-      "detail": "1 forecasts"
+      "ms": 4729,
+      "detail": "2 forecasts"
     },
     "TC-53": {
       "id": "TC-53",
       "name": "Forecast: works with inline demo data",
       "status": "PASS",
-      "ms": 3493,
+      "ms": 3378,
       "detail": "1 forecasts for inline data"
     },
     "TC-54": {
       "id": "TC-54",
       "name": "Query: answer about revenue",
       "status": "PASS",
-      "ms": 3659,
+      "ms": 2361,
       "detail": "Intel's revenue for Q4 2025 was $13,700M...."
     },
     "TC-55": {
       "id": "TC-55",
       "name": "Query: works with inline demo data",
       "status": "PASS",
-      "ms": 2098,
-      "detail": "TestCorp's Q4 2025 revenue is $5,000M...."
+      "ms": 1943,
+      "detail": "TestCorp's Q4 2025 revenue was $5,000M...."
     },
     "TC-56": {
       "id": "TC-56",
       "name": "Upload: rejects non-multipart request",
       "status": "PASS",
-      "ms": 16,
+      "ms": 199,
       "detail": "400 returned"
     },
     "TC-57": {
       "id": "TC-57",
       "name": "GET / returns 200 (main dashboard)",
       "status": "PASS",
-      "ms": 41,
+      "ms": 144,
       "detail": "19415 bytes"
     },
     "TC-58": {
       "id": "TC-58",
       "name": "GET /demo returns 200",
       "status": "PASS",
-      "ms": 52,
-      "detail": "35294 bytes"
+      "ms": 458,
+      "detail": "35293 bytes"
     },
     "TC-59": {
       "id": "TC-59",
       "name": "GET /judges returns 200",
       "status": "PASS",
-      "ms": 18,
+      "ms": 228,
       "detail": "200 OK"
     },
     "TC-60": {
       "id": "TC-60",
       "name": "GET /health page returns 200",
       "status": "PASS",
-      "ms": 19,
+      "ms": 186,
       "detail": "200 OK"
     },
     "TC-61": {
       "id": "TC-61",
       "name": "GET /nonexistent returns 404",
       "status": "PASS",
-      "ms": 16,
+      "ms": 256,
       "detail": "404 correct"
     },
     "TC-62": {
@@ -439,28 +439,28 @@
       "name": "KPIs: quarter values are valid",
       "status": "PASS",
       "ms": 0,
-      "detail": "All quarters valid: Q4"
+      "detail": "All quarters valid: Q1, Q4"
     },
     "TC-63": {
       "id": "TC-63",
       "name": "KPIs: year values are reasonable",
       "status": "PASS",
       "ms": 0,
-      "detail": "Years: 2025"
+      "detail": "Years: 2026, 2025"
     },
     "TC-64": {
       "id": "TC-64",
       "name": "KPIs: values are numbers",
       "status": "PASS",
-      "ms": 1,
-      "detail": "All 8 values are finite numbers"
+      "ms": 0,
+      "detail": "All 19 values are finite numbers"
     },
     "TC-65": {
       "id": "TC-65",
       "name": "KPIs: units are known types",
       "status": "PASS",
       "ms": 0,
-      "detail": "Units: $M, $, %"
+      "detail": "Units: $, %, $M"
     }
   },
   "tests": [
@@ -468,35 +468,35 @@
       "id": "TC-01",
       "name": "GET /api/health returns 200",
       "status": "PASS",
-      "ms": 4837,
+      "ms": 4441,
       "detail": "ok=true"
     },
     {
       "id": "TC-02",
       "name": "Health: Notion MCP connected",
       "status": "PASS",
-      "ms": 3485,
+      "ms": 3283,
       "detail": "MCP connected — bot: KPI Tracker"
     },
     {
       "id": "TC-03",
       "name": "Health: AI provider connected",
       "status": "PASS",
-      "ms": 3041,
+      "ms": 5453,
       "detail": "google: Google Gemini connected"
     },
     {
       "id": "TC-04",
       "name": "Health: All 3 databases accessible",
       "status": "PASS",
-      "ms": 4915,
+      "ms": 2585,
       "detail": "clients, reports, kpis"
     },
     {
       "id": "TC-05",
       "name": "GET /api/models returns model list",
       "status": "PASS",
-      "ms": 19,
+      "ms": 170,
       "detail": "6 models"
     },
     {
@@ -524,7 +524,7 @@
       "id": "TC-09",
       "name": "GET /api/clients returns array",
       "status": "PASS",
-      "ms": 8,
+      "ms": 625,
       "detail": "3 clients"
     },
     {
@@ -538,28 +538,28 @@
       "id": "TC-11",
       "name": "Clients: cache works on second request",
       "status": "PASS",
-      "ms": 6,
+      "ms": 14,
       "detail": "cached=true"
     },
     {
       "id": "TC-12",
       "name": "GET /api/kpis returns array",
       "status": "PASS",
-      "ms": 6,
-      "detail": "8 KPIs loaded"
+      "ms": 803,
+      "detail": "19 KPIs loaded"
     },
     {
       "id": "TC-13",
       "name": "KPIs: each has required fields",
       "status": "PASS",
       "ms": 0,
-      "detail": "All 8 KPIs valid"
+      "detail": "All 19 KPIs valid"
     },
     {
       "id": "TC-14",
       "name": "KPIs: sorted by year desc, quarter desc",
       "status": "PASS",
-      "ms": 0,
+      "ms": 1,
       "detail": "Sort verified"
     },
     {
@@ -567,7 +567,7 @@
       "name": "KPIs: no orphan records (all have clientId)",
       "status": "PASS",
       "ms": 0,
-      "detail": "All 8 linked to a client"
+      "detail": "All 19 linked to a client"
     },
     {
       "id": "TC-16",
@@ -580,56 +580,56 @@
       "id": "TC-17",
       "name": "KPIs: cache works on second request",
       "status": "PASS",
-      "ms": 6,
+      "ms": 16,
       "detail": "cached=true"
     },
     {
       "id": "TC-18",
       "name": "KPIs: filter by clientId (Intel)",
       "status": "PASS",
-      "ms": 556,
+      "ms": 459,
       "detail": "8 KPIs for Intel"
     },
     {
       "id": "TC-19",
-      "name": "KPIs: filter by quarter (Q4)",
+      "name": "KPIs: filter by quarter (Q1)",
       "status": "PASS",
-      "ms": 625,
-      "detail": "8 KPIs for Q4"
+      "ms": 510,
+      "detail": "11 KPIs for Q1"
     },
     {
       "id": "TC-20",
-      "name": "KPIs: filter by year (2025)",
+      "name": "KPIs: filter by year (2026)",
       "status": "PASS",
-      "ms": 818,
-      "detail": "8 KPIs for 2025"
+      "ms": 667,
+      "detail": "11 KPIs for 2026"
     },
     {
       "id": "TC-21",
       "name": "Ingest: rejects empty body",
       "status": "PASS",
-      "ms": 10,
+      "ms": 155,
       "detail": "400 returned"
     },
     {
       "id": "TC-22",
       "name": "Ingest: rejects missing clientName",
       "status": "PASS",
-      "ms": 5,
+      "ms": 15,
       "detail": "400 returned"
     },
     {
       "id": "TC-23",
       "name": "Ingest: rejects invalid quarter Q5",
       "status": "PASS",
-      "ms": 6,
+      "ms": 5,
       "detail": "Quarter must be Q1, Q2, Q3, or Q4."
     },
     {
       "id": "TC-24",
       "name": "Ingest: rejects year < 2000",
       "status": "PASS",
-      "ms": 4,
+      "ms": 5,
       "detail": "400 returned"
     },
     {
@@ -643,126 +643,126 @@
       "id": "TC-26",
       "name": "Confirm: rejects empty body",
       "status": "PASS",
-      "ms": 7,
+      "ms": 133,
       "detail": "400 returned"
     },
     {
       "id": "TC-27",
       "name": "Confirm: rejects missing kpis",
       "status": "PASS",
-      "ms": 6,
+      "ms": 20,
       "detail": "400 returned"
     },
     {
       "id": "TC-28",
       "name": "Custom KPI: rejects empty body",
       "status": "PASS",
-      "ms": 6,
+      "ms": 147,
       "detail": "400 returned"
     },
     {
       "id": "TC-29",
       "name": "Custom KPI: rejects missing fields",
       "status": "PASS",
-      "ms": 4,
+      "ms": 10,
       "detail": "400 returned"
     },
     {
       "id": "TC-30",
       "name": "Custom KPI: rejects invalid unit",
       "status": "PASS",
-      "ms": 4,
+      "ms": 13,
       "detail": "Unit must be one of: $M, %, $, x, days, count, other"
     },
     {
       "id": "TC-31",
       "name": "Custom KPI: rejects invalid quarter",
       "status": "PASS",
-      "ms": 3,
+      "ms": 6,
       "detail": "400 returned"
     },
     {
       "id": "TC-32",
       "name": "Custom KPI: accepts Annual quarter",
       "status": "PASS",
-      "ms": 347,
+      "ms": 341,
       "detail": "Status 500 (expected 200 or 500 for fake clientId)"
     },
     {
       "id": "TC-33",
       "name": "Custom KPI: rejects non-finite value",
       "status": "PASS",
-      "ms": 16,
+      "ms": 5,
       "detail": "400 returned"
     },
     {
       "id": "TC-34",
       "name": "Custom KPI: rejects name > 100 chars",
       "status": "PASS",
-      "ms": 7,
+      "ms": 5,
       "detail": "400 returned"
     },
     {
       "id": "TC-35",
       "name": "Delete: rejects empty body",
       "status": "PASS",
-      "ms": 6,
+      "ms": 122,
       "detail": "400 returned"
     },
     {
       "id": "TC-36",
       "name": "Delete: rejects empty ids array",
       "status": "PASS",
-      "ms": 6,
+      "ms": 3,
       "detail": "400 returned"
     },
     {
       "id": "TC-37",
       "name": "Delete: rejects > 100 ids",
       "status": "PASS",
-      "ms": 10,
+      "ms": 4,
       "detail": "400 returned"
     },
     {
       "id": "TC-38",
       "name": "Delete: rejects non-array ids",
       "status": "PASS",
-      "ms": 5,
+      "ms": 3,
       "detail": "400 returned"
     },
     {
       "id": "TC-39",
       "name": "Query: rejects missing question",
       "status": "PASS",
-      "ms": 8,
+      "ms": 142,
       "detail": "400 returned"
     },
     {
       "id": "TC-40",
       "name": "Query: rejects question > 500 chars",
       "status": "PASS",
-      "ms": 5,
+      "ms": 20,
       "detail": "400 returned"
     },
     {
       "id": "TC-41",
       "name": "Query: rejects injection attempt",
       "status": "PASS",
-      "ms": 7,
+      "ms": 4,
       "detail": "Blocked → Invalid query. Please ask a financial performance question."
     },
     {
       "id": "TC-42",
       "name": "Judges auth: rejects wrong password",
       "status": "PASS",
-      "ms": 8,
+      "ms": 122,
       "detail": "401 returned"
     },
     {
       "id": "TC-43",
       "name": "Judges auth: rejects empty password",
       "status": "PASS",
-      "ms": 4,
+      "ms": 5,
       "detail": "401 returned"
     },
     {
@@ -776,119 +776,119 @@
       "id": "TC-45",
       "name": "Cache: KPIs are cached after first fetch",
       "status": "PASS",
-      "ms": 3,
+      "ms": 5,
       "detail": "cached=true"
     },
     {
       "id": "TC-46",
       "name": "Cache: Clients are cached after first fetch",
       "status": "PASS",
-      "ms": 4,
+      "ms": 6,
       "detail": "cached=true"
     },
     {
       "id": "TC-47",
       "name": "Save test KPI for Apple",
       "status": "PASS",
-      "ms": 479,
-      "detail": "pageId=32e1368d..."
+      "ms": 596,
+      "detail": "pageId=32f1368d..."
     },
     {
       "id": "TC-48",
       "name": "Verify test KPI appears in fetch (may be slow due to Notion search index)",
       "status": "PASS",
-      "ms": 6564,
-      "detail": "Not yet indexed (Notion search delay) — save+delete cycle still proves data path"
+      "ms": 583,
+      "detail": "Found (attempt 1): E2E Test Metric=99.99 %"
     },
     {
       "id": "TC-49",
       "name": "Delete test KPI",
       "status": "PASS",
-      "ms": 813,
+      "ms": 1333,
       "detail": "Deleted 1"
     },
     {
       "id": "TC-50",
       "name": "Verify test KPI gone after delete",
       "status": "PASS",
-      "ms": 612,
+      "ms": 896,
       "detail": "Gone (confirmed)"
     },
     {
       "id": "TC-51",
       "name": "Forecast: rejects invalid body",
       "status": "PASS",
-      "ms": 11,
+      "ms": 209,
       "detail": "400 returned"
     },
     {
       "id": "TC-52",
       "name": "Forecast: returns forecasts from live data",
       "status": "PASS",
-      "ms": 5301,
-      "detail": "1 forecasts"
+      "ms": 4729,
+      "detail": "2 forecasts"
     },
     {
       "id": "TC-53",
       "name": "Forecast: works with inline demo data",
       "status": "PASS",
-      "ms": 3493,
+      "ms": 3378,
       "detail": "1 forecasts for inline data"
     },
     {
       "id": "TC-54",
       "name": "Query: answer about revenue",
       "status": "PASS",
-      "ms": 3659,
+      "ms": 2361,
       "detail": "Intel's revenue for Q4 2025 was $13,700M...."
     },
     {
       "id": "TC-55",
       "name": "Query: works with inline demo data",
       "status": "PASS",
-      "ms": 2098,
-      "detail": "TestCorp's Q4 2025 revenue is $5,000M...."
+      "ms": 1943,
+      "detail": "TestCorp's Q4 2025 revenue was $5,000M...."
     },
     {
       "id": "TC-56",
       "name": "Upload: rejects non-multipart request",
       "status": "PASS",
-      "ms": 16,
+      "ms": 199,
       "detail": "400 returned"
     },
     {
       "id": "TC-57",
       "name": "GET / returns 200 (main dashboard)",
       "status": "PASS",
-      "ms": 41,
+      "ms": 144,
       "detail": "19415 bytes"
     },
     {
       "id": "TC-58",
       "name": "GET /demo returns 200",
       "status": "PASS",
-      "ms": 52,
-      "detail": "35294 bytes"
+      "ms": 458,
+      "detail": "35293 bytes"
     },
     {
       "id": "TC-59",
       "name": "GET /judges returns 200",
       "status": "PASS",
-      "ms": 18,
+      "ms": 228,
       "detail": "200 OK"
     },
     {
       "id": "TC-60",
       "name": "GET /health page returns 200",
       "status": "PASS",
-      "ms": 19,
+      "ms": 186,
       "detail": "200 OK"
     },
     {
       "id": "TC-61",
       "name": "GET /nonexistent returns 404",
       "status": "PASS",
-      "ms": 16,
+      "ms": 256,
       "detail": "404 correct"
     },
     {
@@ -896,28 +896,28 @@
       "name": "KPIs: quarter values are valid",
       "status": "PASS",
       "ms": 0,
-      "detail": "All quarters valid: Q4"
+      "detail": "All quarters valid: Q1, Q4"
     },
     {
       "id": "TC-63",
       "name": "KPIs: year values are reasonable",
       "status": "PASS",
       "ms": 0,
-      "detail": "Years: 2025"
+      "detail": "Years: 2026, 2025"
     },
     {
       "id": "TC-64",
       "name": "KPIs: values are numbers",
       "status": "PASS",
-      "ms": 1,
-      "detail": "All 8 values are finite numbers"
+      "ms": 0,
+      "detail": "All 19 values are finite numbers"
     },
     {
       "id": "TC-65",
       "name": "KPIs: units are known types",
       "status": "PASS",
       "ms": 0,
-      "detail": "Units: $M, $, %"
+      "detail": "Units: $, %, $M"
     }
   ]
 }
