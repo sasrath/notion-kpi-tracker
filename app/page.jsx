@@ -1127,8 +1127,8 @@ export default function HomePage({ demoData } = {}) {
                   <p className="text-3xl font-bold mt-1">{cleanKPIs.length}</p>
                 </div>
                 <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-5 text-white">
-                  <p className="text-xs font-medium opacity-80 uppercase tracking-wide">Clients</p>
-                  <p className="text-3xl font-bold mt-1">{clients.length}</p>
+                  <p className="text-xs font-medium opacity-80 uppercase tracking-wide">Entities</p>
+                  <p className="text-3xl font-bold mt-1">{activeClients.length}</p>
                 </div>
                 <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-5 text-white">
                   <p className="text-xs font-medium opacity-80 uppercase tracking-wide">High Confidence</p>
