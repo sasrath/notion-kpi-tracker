@@ -222,17 +222,6 @@ node lib/tests/test-json-repair.mjs
 
 ---
 
-## 🚢 Deploy to Vercel
-
-1. Push this repo to GitHub
-2. Import the repo at [vercel.com/new](https://vercel.com/new)
-3. Add all environment variables from `.env.local` in **Project → Settings → Environment Variables**
-4. Deploy — Vercel auto-detects Next.js and builds automatically
-
-> **Tip:** AI ingestion calls may take 10-15s. Consider increasing the function timeout in Vercel project settings if you experience timeouts.
-
----
-
 ## 🔧 Troubleshooting
 
 **"Failed to fetch clients from Notion"**
