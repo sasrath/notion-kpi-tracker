@@ -1,6 +1,6 @@
 # 📊 KPI Tracker — Powered by Notion MCP
 
-> AI-powered client quarterly performance tracker with multi-model support (Google Gemini + Anthropic Claude), 9+ interactive charts, AI revenue forecasting, and Notion as the sole backend. Zero traditional database.
+> AI-powered client quarterly performance tracker with multi-model support (Google Gemini + Anthropic Claude), 11+ interactive charts, AI revenue forecasting, and Notion as the sole backend. Zero traditional database.
 
 **Built for the [dev.to Notion MCP Challenge](https://dev.to/challenges/notion-2026-03-04)**
 
@@ -19,7 +19,7 @@
 - 💬 **Ask AI** — query your data in natural language
 - 📈 **All Clients Aggregation** — summary cards intelligently aggregate across all clients
 - 💰 **Smart $B Formatting** — revenue values ≥ $1,000M auto-display as $B (e.g., $12.7B)
-- 🔄 **Auto-Refresh** — dashboard polls every 30s and refreshes on tab focus
+- �️ **Static Demo** — try the app at `/demo` with pre-loaded Intel/Apple/Nvidia data, no API keys needed
 - 🔒 **Secure** — API keys never touch the browser; prompt injection detection built-in
 
 ---
@@ -192,11 +192,11 @@ notion-kpi-tracker/
 ## 🧪 Testing
 
 ```bash
-# Comprehensive E2E tests (65 tests, requires running server)
+# Comprehensive E2E tests (77 tests, requires running server)
 npm run dev &
 node lib/tests/test-e2e-full.mjs
 
-# Chart data transforms (43 assertions)
+# Chart data transforms (70 assertions)
 node lib/tests/test-charts.mjs
 
 # JSON repair for truncated AI responses (6 tests)
