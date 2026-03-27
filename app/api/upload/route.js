@@ -110,11 +110,19 @@ export async function POST(request) {
     );
   }
 
+  // Filter out KPIs with no value — they can't be saved and would cause
+  // a mismatch between the preview count and what actually lands in Notion.
+  const saveable = extraction.kpis.filter((k) => k.value !== null && k.value !== undefined);
+  const skipped  = extraction.kpis.length - saveable.length;
+
   sessionCounts.set(ip, count + 1);
 
   return NextResponse.json({
-    preview: extraction.kpis,
-    warnings: extraction.warnings,
+    preview: saveable,
+    warnings: [
+      ...(extraction.warnings ?? []),
+      ...(skipped > 0 ? [`${skipped} KPI(s) with no value were omitted from the preview.`] : []),
+    ],
     clientName,
     quarter,
     year,

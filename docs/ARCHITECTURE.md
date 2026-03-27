@@ -1,9 +1,9 @@
 # Architecture Document
 ## Client Quarterly Performance Tracker — Powered by Notion MCP
 
-**Version:** 2.0  
+**Version:** 3.0  
 **Status:** Current  
-**Last Updated:** March 23, 2026
+**Last Updated:** March 27, 2026
 
 ---
 
@@ -61,12 +61,14 @@ App
 │   │   ├── ClientFilterBar (pill buttons per client)
 │   │   ├── KPICardRow (Revenue, Gross Margin, Net Margin, EPS, Operating Income, Customer Count)
 │   │   ├── StatsOverviewBar (Total KPIs, Clients, High Confidence, Custom — "All Clients" only)
-│   │   ├── Charts Row 1: AreaChart (Revenue Trend) + BarChart (Revenue Forecast AI)
-│   │   ├── Charts Row 2: LineChart (Margin Trends) + LineChart (EPS Trends)
-│   │   ├── Charts Row 3: PieChart (KPI Distribution) + PieChart (Confidence) + Heatmap
-│   │   ├── Charts Row 4: ComposedChart (Revenue + Margin) + BarChart (KPI Gauges)
-│   │   ├── Charts Row 5: Treemap (KPI Landscape)
-│   │   └── KPITable (paginated, 20/page, checkbox select, delete, company filter)
+│   │   ├── DraggableChartsGrid (DnD-reorderable, localStorage-persisted chart order)
+│   │   │   ├── SortableChartCard (drag handle on hover, unpin button for pinned charts)
+│   │   │   ├── Built-in charts: Revenue Trend, Revenue Forecast, Margin Trends, EPS Trends,
+│   │   │   │   Segment Revenue, KPI Distribution, Confidence, QoQ Heatmap,
+│   │   │   │   Revenue vs Margins, KPI Gauges, KPI Landscape
+│   │   │   └── Pinned KPI Charts (user-pinned from KPI table, dynamic line charts)
+│   │   ├── KPITable (paginated, chart icon per row, delete, company filter)
+│   │   └── KPIChartModal (click chart icon → modal with line chart + data table)
 │   ├── AddReportView (always mounted, hidden via CSS when inactive)
 │   │   ├── ModeToggle (URL | Upload PDF)
 │   │   ├── ReportForm (URL/file, client name, ticker, quarter, year)
@@ -82,6 +84,14 @@ App
 ```
 
 **Tab Persistence:** All tab panels (Add Report, Custom KPI, Ask AI) are always mounted in the DOM but hidden via CSS `hidden` class when inactive. This ensures that async operations (e.g., AI report analysis) survive tab switching.
+
+**Drag-and-Drop Charts:** All 11 built-in charts plus any user-pinned KPI charts are rendered inside a `DndContext` (from `@dnd-kit`). Users can reorder charts by dragging. Order is persisted to `localStorage`. New charts (from DEFAULT_CHART_ORDER) are merged in automatically.
+
+**KPI Chart Modal:** Clicking the chart icon on any KPI table row opens a modal showing that KPI's historical trend as a line chart (one line per company) with a data table below. Users can pin the chart to the dashboard grid.
+
+**Auto-Refresh:** Dashboard data auto-refreshes every 30 seconds and on browser tab focus (visibility change). After saving KPIs, data re-fetches after a 1.5s Notion indexing delay.
+
+**Smart $B Formatting:** Revenue values ≥ $1,000M are automatically displayed as $B (e.g., $12.7B) across all charts, tooltips, and summary cards.
 
 **KPI Summary Cards (All Clients):** When "All Clients" is selected, summary cards show aggregated values — Revenue, Operating Income, and Customer Count are **summed** across clients; Gross Margin, Net Margin, and EPS are **averaged**. Individual client views show that client's latest values.
 
@@ -141,7 +151,8 @@ Output: { answer: string }
 | `getKPIDistribution()` | Pie chart of KPI name distribution |
 | `getConfidenceDistribution()` | Pie chart of High/Medium/Low confidence |
 | `getQuarterlyHeatmap()` | Quarterly performance heatmap data |
-| `formatValue()` | Format KPI value with unit prefix |
+| `formatValue()` | Format KPI value with unit prefix (auto-scales $M → $B) |
+| `formatDollarM()` | Format $M chart tooltip values (auto-scales to $B when ≥ 1000M) |
 | `confidenceColor()` | Map confidence level to color |
 | `getComposedData()` | Combined revenue + margin chart data |
 | `getRadialBarData()` | Horizontal bar gauge data (supports negatives) |
@@ -260,10 +271,11 @@ Frontend writes to Notion via MCP:
   1. Create/find Client record
   2. Create Quarterly Report record
   3. Create one KPI record per extracted KPI
+  (Progress indicator shown: spinner + "Saving N KPIs to Notion…")
          │
          ▼
 Dashboard re-fetches from Notion
-UI updates with new data
+UI updates with new data (auto-refresh every 30s + on tab focus)
 ```
 
 ### 3.2 Dashboard Render Flow

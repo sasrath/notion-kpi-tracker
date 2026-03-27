@@ -34,9 +34,9 @@
 `[ACTION]` Scroll slowly down the dashboard to show all chart rows. Then scroll back to the top.
 
 `[SAY]`  
-> "The dashboard has **nine chart types**: revenue trend, margin trends over time, EPS trends, a quarterly heatmap, a treemap, a composed chart, confidence distribution, and an AI revenue forecast."
+> "The dashboard has **eleven chart types**: revenue trend, revenue forecast, margin trends over time, EPS trends, a segment revenue breakdown, a quarterly heatmap, a treemap, a composed chart, KPI distribution, confidence distribution, and KPI gauges."
 
-> "At the top you'll see **KPI summary cards** — Revenue, Gross Margin, Net Margin, EPS, and Operating Income. These update in real time from Notion."
+> "At the top you'll see **KPI summary cards** — Revenue, Gross Margin, Net Margin, EPS, and Operating Income. These update in real time from Notion. Notice that large revenue values automatically display in **billions** — like $12.7B instead of $12,700M."
 
 > "Right now I'm on the **All Clients** view, which aggregates all companies together. I can switch to individual clients using these filter buttons."
 
@@ -87,6 +87,8 @@
 `[ACTION]` Click **"Save to Notion"**.
 
 `[SAY]`  
+> "Watch the progress indicator — it shows a spinner with a message: 'Saving 47 KPIs to Notion…' and explains what it's doing behind the scenes: creating a client record, a report entry, and individual KPI rows via the Notion MCP."
+
 > "Saved. Notion MCP just created a new client record, a quarterly report entry, and all these KPIs as individual database rows — using the official **21-tool Notion MCP server**."
 
 ---
@@ -96,12 +98,45 @@
 `[ACTION]` Click back to the **"Dashboard"** tab.
 
 `[SAY]`  
-> "The dashboard now shows the new data. No refresh needed. The charts rebuilt themselves with the updated Notion data."
+> "The dashboard now shows the new data. It **auto-refreshes every 30 seconds** and also re-fetches whenever you switch back to this browser tab. No manual refresh needed."
 
 `[ACTION]` Click the new client's name in the filter buttons. Zoom into the charts.
 
 `[SAY]`  
 > "Revenue trend, margins, EPS — all live from Notion."
+
+---
+
+## SCENE 5.5 — Drag-and-Drop Chart Reordering (45 seconds)
+
+`[ACTION]` Hover over one of the chart cards on the dashboard. A drag handle (6 dots) appears in the top-right corner.
+
+`[SAY]`  
+> "Every chart on the dashboard is **draggable**. Hover over any chart card and you'll see a drag handle appear. I can click-and-drag to rearrange the charts in any order I want."
+
+`[ACTION]` Drag a chart to a new position. The grid animates the reorder.
+
+`[SAY]`  
+> "This order is **saved to localStorage**, so next time I open the dashboard, everything stays where I put it. No setup, no account — it just remembers."
+
+---
+
+## SCENE 5.6 — KPI Chart from Table (45 seconds)
+
+`[ACTION]` Scroll down to the KPI table. Click the chart icon on any KPI row (e.g., Revenue).
+
+`[SAY]`  
+> "Here's a new feature: clicking the **chart icon** on any KPI row opens a detailed modal. It shows that KPI's **historical trend across all periods and companies** as a line chart, with exact values in a table below."
+
+`[ACTION]` The KPIChartModal opens with a line chart.
+
+`[SAY]`  
+> "I can also **pin this chart to the dashboard**."
+
+`[ACTION]` Click "Pin to dashboard" in the modal header. Close the modal. Scroll up to the charts grid — the pinned chart appears as a new card.
+
+`[SAY]`  
+> "There it is — my custom KPI chart is now part of the dashboard grid. I can drag it around just like any other chart, and I can remove it by hovering and clicking the X button."
 
 ---
 

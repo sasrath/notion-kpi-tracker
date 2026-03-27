@@ -10,18 +10,103 @@ import {
 } from "recharts";
 import {
   getRevenueTrend, getLatestSummary,
-  formatValue, confidenceColor,
+  formatValue, formatDollarM, confidenceColor,
   getMarginTrend, getKPIDistribution,
   getConfidenceDistribution, getQuarterlyHeatmap,
   getComposedData, getRadialBarData, getTreemapData,
-  deduplicateKPIs, buildForecastChartData, getEPSTrend,
+  deduplicateKPIs, buildForecastChartData, getEPSTrend, getSegmentRevenueTrend,
 } from "@/lib/transforms";
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragOverlay,
+} from "@dnd-kit/core";
+import {
+  SortableContext, useSortable, arrayMove, rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ─── COLOURS for charts ───────────────────────────────────────────
 const CHART_COLORS = [
   "#4f6ef7", "#10b981", "#f59e0b", "#ef4444",
   "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16",
 ];
+
+// ─── CHART ORDER CONFIG ───────────────────────────────────────────
+const DEFAULT_CHART_ORDER = [
+  { id: "revenue-trend",      span: 1 },
+  { id: "revenue-forecast",   span: 1 },
+  { id: "margin-trend",       span: 1 },
+  { id: "eps-trend",          span: 1 },
+  { id: "segment-revenue",    span: 2 },
+  { id: "kpi-distribution",   span: 1 },
+  { id: "data-confidence",    span: 1 },
+  { id: "qoq-heatmap",        span: 1 },
+  { id: "revenue-vs-margins", span: 1 },
+  { id: "kpi-gauges",         span: 1 },
+  { id: "kpi-landscape",      span: 2 },
+];
+
+const LS_KEY = "kpi-chart-order";
+
+function loadChartOrder() {
+  if (typeof window === "undefined") return DEFAULT_CHART_ORDER;
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_KEY) ?? "null");
+    if (!Array.isArray(saved)) return DEFAULT_CHART_ORDER;
+    // Merge: keep saved order but add any new chart IDs from default
+    const savedIds = new Set(saved.map((c) => c.id));
+    const merged = [
+      ...saved.filter((c) => DEFAULT_CHART_ORDER.find((d) => d.id === c.id)),
+      ...DEFAULT_CHART_ORDER.filter((d) => !savedIds.has(d.id)),
+    ];
+    return merged;
+  } catch {
+    return DEFAULT_CHART_ORDER;
+  }
+}
+
+// ─── SORTABLE CHART CARD WRAPPER ─────────────────────────────────
+function SortableChartCard({ id, span, children, onUnpin }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging: isThisCardDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isThisCardDragging ? 0.35 : 1,
+    gridColumn: span === 2 ? "span 2 / span 2" : "span 1 / span 1",
+  };
+  return (
+    <div ref={setNodeRef} style={style} className="relative group">
+      {/* Unpin button — only for pinned KPI charts */}
+      {onUnpin && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onUnpin(); }}
+          className="absolute top-3 right-12 z-10 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-400 hover:text-indigo-600"
+          title="Unpin from dashboard"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+          </svg>
+        </button>
+      )}
+      {/* Drag handle — appears on hover */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200"
+        title="Drag to reorder"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-slate-400">
+          <circle cx="4" cy="3.5" r="1.25" fill="currentColor"/>
+          <circle cx="10" cy="3.5" r="1.25" fill="currentColor"/>
+          <circle cx="4" cy="7" r="1.25" fill="currentColor"/>
+          <circle cx="10" cy="7" r="1.25" fill="currentColor"/>
+          <circle cx="4" cy="10.5" r="1.25" fill="currentColor"/>
+          <circle cx="10" cy="10.5" r="1.25" fill="currentColor"/>
+        </svg>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 // ─── SMALL COMPONENTS ────────────────────────────────────────────
 
@@ -117,7 +202,9 @@ function AddReportPanel({ clients, onSuccess, selectedModel }) {
   const [warnings, setWarnings] = useState([]);
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [savingPhase, setSavingPhase] = useState(0); // 0=client, 1=report, 2=kpis
   const fileInputRef = useRef(null);
+  const savingTimersRef = useRef([]);
 
   const handleFetch = async () => {
     if (mode === "url" && !form.url) return setError("Report URL is required.");
@@ -164,7 +251,14 @@ function AddReportPanel({ clients, onSuccess, selectedModel }) {
 
   const handleConfirm = async () => {
     setStep("saving");
+    setSavingPhase(0);
     const source = mode === "upload" ? `${docType}: ${file.name}` : form.url;
+
+    // Advance phases while waiting for API: client → report → KPIs
+    const t1 = setTimeout(() => setSavingPhase(1), 1200);
+    const t2 = setTimeout(() => setSavingPhase(2), 2800);
+    savingTimersRef.current = [t1, t2];
+
     const res = await fetch("/api/ingest/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -172,11 +266,17 @@ function AddReportPanel({ clients, onSuccess, selectedModel }) {
     });
     const data = await res.json();
 
+    // Clear pending phase timers
+    savingTimersRef.current.forEach(clearTimeout);
+    savingTimersRef.current = [];
+
     if (!res.ok) {
       setError(data.error);
       setStep("preview");
+      setSavingPhase(0);
     } else {
       setStep("form");
+      setSavingPhase(0);
       setPreview(null);
       setFile(null);
       setForm({ url: "", clientName: "", ticker: "", quarter: "Q1", year: new Date().getFullYear() });
@@ -424,6 +524,33 @@ function AddReportPanel({ clients, onSuccess, selectedModel }) {
           >
             {step === "saving" ? "Saving to Notion..." : `✓ Confirm & Save ${preview.length} KPIs to Notion`}
           </button>
+
+          {step === "saving" && (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-5 py-4 flex items-start gap-3">
+              <svg className="animate-spin h-5 w-5 text-indigo-600 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-indigo-800">
+                  {savingPhase === 0 && "Finding or creating client record…"}
+                  {savingPhase === 1 && "Creating quarterly report entry…"}
+                  {savingPhase === 2 && `Saving ${preview?.length ?? 0} KPI entries to Notion…`}
+                </p>
+                <div className="flex gap-1.5 mt-2">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className={`h-1.5 rounded-full flex-1 transition-all duration-500 ${
+                        i <= savingPhase ? "bg-indigo-500" : "bg-indigo-200"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-indigo-400 mt-1.5">Step {savingPhase + 1} of 3</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -564,7 +691,7 @@ function CustomKPIPanel({ clients, onSuccess }) {
 
 const PAGE_SIZE = 20;
 
-function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll }) {
+function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll, onChartClick }) {
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState(new Set());
   const [deleting, setDeleting] = useState(false);
@@ -665,8 +792,8 @@ function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll }) {
                   className="rounded border-slate-300"
                 />
               </th>
-              {["Client","KPI","Value","Unit","Quarter","Year","Source","Confidence",""].map((h) => (
-                <th key={h} className="text-left px-4 py-3">{h}</th>
+              {["Client","KPI","Value","Unit","Quarter","Year","Source","_chart","_delete"].map((h) => (
+                <th key={h} className="text-left px-4 py-3">{h.startsWith("_") ? "" : h}</th>
               ))}
             </tr>
           </thead>
@@ -693,9 +820,18 @@ function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll }) {
                     <Badge label={kpi.source} variant={kpi.source === "Custom" ? "custom" : "ai"} />
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${confidenceColor(kpi.confidence)}`}>
-                      {kpi.confidence}
-                    </span>
+                    <button
+                      onClick={() => onChartClick({ name: kpi.name, unit: kpi.unit })}
+                      className="text-indigo-400 hover:text-indigo-600 text-xs font-medium transition"
+                      title="View chart for this KPI"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 11.5L5.5 6.5L8.5 9.5L13 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <circle cx="5.5" cy="6.5" r="1" fill="currentColor"/>
+                        <circle cx="8.5" cy="9.5" r="1" fill="currentColor"/>
+                        <circle cx="13" cy="3.5" r="1" fill="currentColor"/>
+                      </svg>
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <button
@@ -751,6 +887,142 @@ function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── KPI CHART MODAL ─────────────────────────────────────────────
+// Opens when user clicks the chart icon on a KPI row.
+// Shows that KPI's value across all periods, grouped by client.
+function KPIChartModal({ kpiName, unit, allKpis, clients, isPinned, onPin, onUnpin, onClose }) {
+  // Build chart data: [{period, ClientA, ClientB, ...}] sorted by year+quarter
+  const byPeriod = {};
+  for (const k of allKpis) {
+    if (k.name !== kpiName || k.value == null) continue;
+    const period = `${k.quarter} ${k.year}`;
+    if (!byPeriod[period]) byPeriod[period] = { period, _sortKey: k.year * 10 + parseInt(k.quarter?.replace(/\D/g, "") || 0, 10) };
+    const cn = clients.find((c) => c.id === k.clientId)?.name ?? "Unknown";
+    byPeriod[period][cn] = k.value;
+  }
+  const chartData = Object.values(byPeriod).sort((a, b) => a._sortKey - b._sortKey);
+  const seriesNames = [...new Set(allKpis.filter((k) => k.name === kpiName && k.value != null).map((k) => clients.find((c) => c.id === k.clientId)?.name ?? "Unknown"))];
+
+  // Decide bar vs line based on data shape
+  const isPercent = unit?.toLowerCase().includes("%");
+  const formatter = isPercent ? (v) => `${v?.toFixed(2)}%` : (v) => `${v?.toLocaleString()}${unit ? " " + unit : ""}`;
+
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-start justify-between">
+          <div>
+            <h2 className="text-base font-bold text-slate-800">{kpiName}</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Historical trend · {seriesNames.length} company{seriesNames.length !== 1 ? "ies" : ""} · {chartData.length} period{chartData.length !== 1 ? "s" : ""}</p>
+          </div>
+          <div className="flex items-center gap-2 ml-4">
+            <button
+              onClick={isPinned ? onUnpin : onPin}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition ${
+                isPinned
+                  ? "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                  : "bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600"
+              }`}
+              title={isPinned ? "Remove from dashboard" : "Pin to dashboard"}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M6 1v7M6 8l-2.5 2.5M6 8l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="6" cy="1" r="1" fill="currentColor"/>
+              </svg>
+              {isPinned ? "Pinned" : "Pin to dashboard"}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition"
+              title="Close"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Chart */}
+        <div className="p-6">
+          {chartData.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-10">No data available for this KPI</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={chartData} margin={{ top: 4, right: 16, bottom: 4, left: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={isPercent ? (v) => `${v}%` : undefined}
+                  width={isPercent ? 40 : 60}
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                  formatter={(value, name) => [formatter(value), name]}
+                />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {seriesNames.map((name, i) => (
+                  <Line
+                    key={name}
+                    type="monotone"
+                    dataKey={name}
+                    stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                    strokeWidth={2.5}
+                    dot={{ r: 4, strokeWidth: 2 }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                    connectNulls
+                    animationDuration={600}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Footer — period × value table */}
+        {chartData.length > 0 && (
+          <div className="px-6 pb-6 overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50">
+                  <th className="text-left px-3 py-2 text-slate-500 font-semibold rounded-l-lg">Period</th>
+                  {seriesNames.map((n) => (
+                    <th key={n} className="text-right px-3 py-2 text-slate-500 font-semibold">{n}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {chartData.map((row) => (
+                  <tr key={row.period} className="border-t border-slate-50 hover:bg-slate-50/60">
+                    <td className="px-3 py-2 font-medium text-slate-600">{row.period}</td>
+                    {seriesNames.map((n) => (
+                      <td key={n} className="px-3 py-2 text-right font-mono text-slate-700">
+                        {row[n] != null ? formatter(row[n]) : <span className="text-slate-300">—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -847,6 +1119,46 @@ export default function HomePage({ demoData } = {}) {
   const [forecastLoading, setForecastLoading] = useState(false);
   const [forecastError, setForecastError] = useState(null);
   const forecastFetchedRef = useRef(false);
+  const [chartOrder, setChartOrder] = useState(DEFAULT_CHART_ORDER);
+  const [activeDragId, setActiveDragId] = useState(null);
+  const [kpiChartTarget, setKpiChartTarget] = useState(null); // { name, unit }
+
+  function handlePinKPI(name, unit) {
+    const id = `pin:${name}`;
+    setChartOrder((prev) => {
+      if (prev.find((c) => c.id === id)) return prev; // already pinned
+      const next = [...prev, { id, span: 1, unit }];
+      localStorage.setItem(LS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function handleUnpinKPI(name) {
+    const id = `pin:${name}`;
+    setChartOrder((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      localStorage.setItem(LS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  // Load saved chart order from localStorage after mount
+  useEffect(() => { setChartOrder(loadChartOrder()); }, []);
+
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  function handleDragEnd(event) {
+    const { active, over } = event;
+    setActiveDragId(null);
+    if (!over || active.id === over.id) return;
+    setChartOrder((prev) => {
+      const oldIdx = prev.findIndex((c) => c.id === active.id);
+      const newIdx = prev.findIndex((c) => c.id === over.id);
+      const next = arrayMove(prev, oldIdx, newIdx);
+      localStorage.setItem(LS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
 
   const fetchData = useCallback(async () => {
     if (demoData) {
@@ -1002,6 +1314,7 @@ export default function HomePage({ demoData } = {}) {
     : forecasts;
   const { chartData: marginData, seriesNames: marginSeries } = getMarginTrend(filteredKPIs, clients);
   const { chartData: epsData, clientNames: epsClients } = getEPSTrend(filteredKPIs, clients);
+  const { chartData: segmentData, segmentNames } = getSegmentRevenueTrend(filteredKPIs, clients);
   const kpiDistribution = getKPIDistribution(filteredKPIs);
   const confidenceDist = getConfidenceDistribution(filteredKPIs);
   const heatmapData = getQuarterlyHeatmap(filteredKPIs, clients);
@@ -1029,6 +1342,11 @@ export default function HomePage({ demoData } = {}) {
           <span className="text-xs text-slate-400 hidden sm:block">Powered by Notion MCP</span>
         </div>
         <div className="flex items-center gap-4">
+          {demoData && (
+            <span className="text-xs bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full font-semibold">
+              Static Demo
+            </span>
+          )}
           {models.length > 0 && (
             <select
               className="border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -1042,17 +1360,19 @@ export default function HomePage({ demoData } = {}) {
               ))}
             </select>
           )}
-          {lastSync && (
+          {lastSync && !demoData && (
             <span className="text-xs text-slate-400 hidden sm:block">
               Synced {lastSync.toLocaleTimeString()}
             </span>
           )}
-          <button
-            onClick={fetchData}
-            className="text-sm text-brand-500 hover:text-brand-700 font-medium"
-          >
-            ↻ Refresh
-          </button>
+          {!demoData && (
+            <button
+              onClick={fetchData}
+              className="text-sm text-brand-500 hover:text-brand-700 font-medium"
+            >
+              ↻ Refresh
+            </button>
+          )}
         </div>
       </header>
 
@@ -1141,413 +1461,314 @@ export default function HomePage({ demoData } = {}) {
               </div>
             )}
 
-            {/* Charts Row 1 — Revenue Trend + Radar Chart */}
-            {!loading && kpis.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Revenue Trend Line Chart */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <h3 className="text-sm font-bold text-slate-700 mb-4">Revenue Trend</h3>
-                  {chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={280}>
-                      <AreaChart data={chartData}>
-                        <defs>
-                          {clientNames.map((name, i) => (
-                            <linearGradient key={name} id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0.3} />
-                              <stop offset="95%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0} />
-                            </linearGradient>
-                          ))}
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                        <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip
-                          contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                          formatter={(value, name) => [`$${value?.toLocaleString()}M`, name]}
-                        />
-                        <Legend />
-                        {clientNames.map((name, i) => (
-                          <Area
-                            key={name}
-                            type="monotone"
-                            dataKey={name}
-                            stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                            strokeWidth={2.5}
-                            fill={`url(#grad-${i})`}
-                            dot={{ r: 4, strokeWidth: 2 }}
-                            activeDot={{ r: 6, strokeWidth: 0 }}
-                            connectNulls
-                            animationDuration={800}
-                          />
-                        ))}
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <p className="text-sm text-slate-400 text-center py-10">No revenue data found</p>
-                  )}
-                </div>
-
-                {/* Right panel: Forecast (individual client) or Revenue by Client (all clients) */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  {selectedClientId ? (
-                    <>
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="text-sm font-bold text-slate-700">Revenue Forecast (AI)</h3>
-                        <button
-                          onClick={() => { forecastFetchedRef.current = false; fetchForecast(); }}
-                          disabled={forecastLoading}
-                          className="text-[11px] px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 transition"
-                        >
-                          {forecastLoading ? "Forecasting…" : "Refresh"}
-                        </button>
-                      </div>
-                      <p className="text-[11px] text-slate-400 mb-4">Historical + AI-predicted next quarter</p>
-                      {forecastLoading ? (
-                        <div className="flex items-center justify-center py-16">
-                          <div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-                          <span className="ml-2 text-xs text-slate-400">AI forecasting…</span>
-                        </div>
-                      ) : forecastError ? (
-                        <p className="text-sm text-red-400 text-center py-10">{forecastError}</p>
-                      ) : forecastChartData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={280}>
-                          <BarChart data={forecastChartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                            <YAxis tick={{ fontSize: 11 }} />
-                            <Tooltip
-                              contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                              formatter={(value, name, props) => {
-                                const isForecast = props.payload._forecast;
-                                return [`$${value?.toLocaleString()}M${isForecast ? " (forecast)" : ""}`, name];
-                              }}
-                            />
-                            <Legend wrapperStyle={{ fontSize: 11 }} />
-                            {forecastClients.map((name, i) => (
-                              <Bar
-                                key={name}
-                                dataKey={name}
-                                fill={CHART_COLORS[i % CHART_COLORS.length]}
-                                radius={[6, 6, 0, 0]}
-                                animationDuration={800}
-                              />
-                            ))}
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <p className="text-sm text-slate-400 text-center py-10">No revenue data for forecast</p>
-                      )}
-                      {visibleForecasts.length > 0 && (
-                        <div className="mt-3 space-y-1">
-                          {visibleForecasts.map((f, i) => (
-                            <p key={i} className="text-[11px] text-slate-500">
-                              <span className="font-medium text-slate-700">{f.client}</span>: {f.reasoning}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <h3 className="text-sm font-bold text-slate-700 mb-4">Revenue by Client</h3>
+            {/* ── Draggable Charts Grid ─────────────────────────────────── */}
+            {!loading && kpis.length > 0 && (() => {
+              const renderChart = (id) => {
+                switch (id) {
+                  case "revenue-trend": return (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                      <h3 className="text-sm font-bold text-slate-700 mb-4">Revenue Trend</h3>
                       {chartData.length > 0 ? (
                         <ResponsiveContainer width="100%" height={280}>
-                          <BarChart data={chartData}>
+                          <AreaChart data={chartData}>
+                            <defs>
+                              {clientNames.map((name, i) => (
+                                <linearGradient key={name} id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0.3} />
+                                  <stop offset="95%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0} />
+                                </linearGradient>
+                              ))}
+                            </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                            <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                            <YAxis tick={{ fontSize: 11 }} />
-                            <Tooltip
-                              contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                              formatter={(value, name) => [`$${value?.toLocaleString()}M`, name]}
-                            />
-                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatDollarM(v)} />
+                            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(value, name) => [formatDollarM(value), name]} />
+                            <Legend />
                             {clientNames.map((name, i) => (
-                              <Bar
-                                key={name}
-                                dataKey={name}
-                                fill={CHART_COLORS[i % CHART_COLORS.length]}
-                                radius={[6, 6, 0, 0]}
-                                animationDuration={800}
-                              />
+                              <Area key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2.5} fill={`url(#grad-${i})`} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6, strokeWidth: 0 }} connectNulls animationDuration={800} />
                             ))}
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : <p className="text-sm text-slate-400 text-center py-10">No revenue data found</p>}
+                    </div>
+                  );
+                  case "revenue-forecast": return (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                      {selectedClientId ? (
+                        <>
+                          <div className="flex items-center justify-between mb-1">
+                            <h3 className="text-sm font-bold text-slate-700">Revenue Forecast (AI)</h3>
+                            <button onClick={() => { forecastFetchedRef.current = false; fetchForecast(); }} disabled={forecastLoading} className="text-[11px] px-2 py-1 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 disabled:opacity-50 transition">
+                              {forecastLoading ? "Forecasting…" : "Refresh"}
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-slate-400 mb-4">Historical + AI-predicted next quarter</p>
+                          {forecastLoading ? (
+                            <div className="flex items-center justify-center py-16"><div className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" /><span className="ml-2 text-xs text-slate-400">AI forecasting…</span></div>
+                          ) : forecastError ? (
+                            <p className="text-sm text-red-400 text-center py-10">{forecastError}</p>
+                          ) : forecastChartData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={280}>
+                              <BarChart data={forecastChartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatDollarM(v)} />
+                                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(value, name, props) => [`${formatDollarM(value)}${props.payload._forecast ? " (forecast)" : ""}`, name]} />
+                                <Legend wrapperStyle={{ fontSize: 11 }} />
+                                {forecastClients.map((name, i) => (<Bar key={name} dataKey={name} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={[6,6,0,0]} animationDuration={800} />))}
+                              </BarChart>
+                            </ResponsiveContainer>
+                          ) : <p className="text-sm text-slate-400 text-center py-10">No revenue data for forecast</p>}
+                          {visibleForecasts.length > 0 && <div className="mt-3 space-y-1">{visibleForecasts.map((f, i) => (<p key={i} className="text-[11px] text-slate-500"><span className="font-medium text-slate-700">{f.client}</span>: {f.reasoning}</p>))}</div>}
+                        </>
+                      ) : (
+                        <>
+                          <h3 className="text-sm font-bold text-slate-700 mb-4">Revenue by Entity</h3>
+                          {chartData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height={280}>
+                              <BarChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatDollarM(v)} />
+                                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(value, name) => [formatDollarM(value), name]} />
+                                <Legend wrapperStyle={{ fontSize: 11 }} />
+                                {clientNames.map((name, i) => (<Bar key={name} dataKey={name} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={[6,6,0,0]} animationDuration={800} />))}
+                              </BarChart>
+                            </ResponsiveContainer>
+                          ) : <p className="text-sm text-slate-400 text-center py-10">No revenue data available</p>}
+                        </>
+                      )}
+                    </div>
+                  );
+                  case "margin-trend": return (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                      <h3 className="text-sm font-bold text-slate-700 mb-4">Margin Trends Over Time</h3>
+                      {marginData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                          <LineChart data={marginData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} unit="%" />
+                            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(value) => [`${value?.toFixed(1)}%`]} />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            {marginSeries.map((name, i) => (<Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5, strokeWidth: 0 }} connectNulls animationDuration={800} />))}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : <p className="text-sm text-slate-400 text-center py-10">No margin data found</p>}
+                    </div>
+                  );
+                  case "eps-trend": return (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                      <h3 className="text-sm font-bold text-slate-700 mb-4">EPS Trends Over Time</h3>
+                      {epsData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={280}>
+                          <LineChart data={epsData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} />
+                            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(value) => [`$${value?.toFixed(2)}`]} />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            {epsClients.map((name, i) => (<Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5, strokeWidth: 0 }} connectNulls animationDuration={800} />))}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : <p className="text-sm text-slate-400 text-center py-10">No EPS data found</p>}
+                    </div>
+                  );
+                  case "segment-revenue": return segmentData.length > 0 ? (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                      <h3 className="text-sm font-bold text-slate-700 mb-1">Segment Revenue Breakdown</h3>
+                      <p className="text-xs text-slate-400 mb-4">Revenue by business unit / segment per quarter</p>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={segmentData} barSize={28}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                          <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatDollarM(v)} />
+                          <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(value, name) => [formatDollarM(value), name]} />
+                          <Legend wrapperStyle={{ fontSize: 11 }} />
+                          {segmentNames.map((seg, i) => (<Bar key={seg} dataKey={seg} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={[4,4,0,0]} animationDuration={800} />))}
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : null;
+                  case "kpi-distribution": return (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                      <h3 className="text-sm font-bold text-slate-700 mb-4">KPI Distribution</h3>
+                      <ResponsiveContainer width="100%" height={240}>
+                        <PieChart>
+                          <Pie data={kpiDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={3} dataKey="value" animationDuration={800}>
+                            {kpiDistribution.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />))}
+                          </Pie>
+                          <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(value, name) => [`${value} entries`, name]} />
+                          <Legend wrapperStyle={{ fontSize: 11 }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  );
+                  case "data-confidence": return (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                      <h3 className="text-sm font-bold text-slate-700 mb-4">Data Confidence</h3>
+                      <ResponsiveContainer width="100%" height={240}>
+                        <PieChart>
+                          <Pie data={confidenceDist} cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={3} dataKey="value" animationDuration={800}>
+                            {confidenceDist.map((entry, i) => (<Cell key={i} fill={CONF_COLORS[entry.name] ?? "#94a3b8"} />))}
+                          </Pie>
+                          <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(value, name) => [`${value} KPIs`, name]} />
+                          <Legend wrapperStyle={{ fontSize: 11 }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  );
+                  case "qoq-heatmap": return (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                      <h3 className="text-sm font-bold text-slate-700 mb-4">QoQ Performance Changes</h3>
+                      {heatmapData.length > 0 ? (
+                        <div className="overflow-y-auto max-h-[240px] space-y-2">
+                          {heatmapData.slice(0, 12).map((row, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <div className="flex-1 min-w-0"><p className="text-xs font-medium text-slate-700 truncate">{row.client}</p><p className="text-[10px] text-slate-400 truncate">{row.kpi}</p></div>
+                              <span className={`text-xs font-bold px-2.5 py-1 rounded-lg whitespace-nowrap ${row.change > 0 ? "text-green-700 bg-green-50" : row.change < 0 ? "text-red-700 bg-red-50" : "text-slate-500 bg-slate-50"}`}>{row.change > 0 ? "+" : ""}{row.change}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="text-sm text-slate-400 text-center py-10">Need multiple quarters for comparison</p>}
+                    </div>
+                  );
+                  case "revenue-vs-margins": return (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                      <h3 className="text-sm font-bold text-slate-700 mb-1">Revenue vs Margins</h3>
+                      <p className="text-[11px] text-slate-400 mb-4">Bars = Revenue ($M) · Lines = Margin (%)</p>
+                      {composedData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <ComposedChart data={composedData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+                            <YAxis yAxisId="revenue" tick={{ fontSize: 11 }} orientation="left" label={{ value: "$M", angle: -90, position: "insideLeft", style: { fontSize: 10, fill: "#94a3b8" } }} />
+                            <YAxis yAxisId="margin" tick={{ fontSize: 11 }} orientation="right" unit="%" label={{ value: "%", angle: 90, position: "insideRight", style: { fontSize: 10, fill: "#94a3b8" } }} />
+                            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(value, name) => name.includes("Revenue") ? [formatDollarM(value), name] : [`${value?.toFixed(1)}%`, name]} />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            {revenueSeries.map((name, i) => (<Bar key={name} yAxisId="revenue" dataKey={name} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={[4,4,0,0]} barSize={28} opacity={0.85} animationDuration={800} />))}
+                            {composedMarginSeries.map((name, i) => (<Line key={name} yAxisId="margin" type="monotone" dataKey={name} stroke={CHART_COLORS[(revenueSeries.length + i) % CHART_COLORS.length]} strokeWidth={2.5} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} connectNulls animationDuration={800} />))}
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      ) : <p className="text-sm text-slate-400 text-center py-10">No revenue/margin data</p>}
+                    </div>
+                  );
+                  case "kpi-gauges": return (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                      <h3 className="text-sm font-bold text-slate-700 mb-1">KPI Gauges</h3>
+                      <p className="text-[11px] text-slate-400 mb-4">Latest values · Margins vs target (Gross 60%, Net 30%)</p>
+                      {radialData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={radialData} layout="vertical" margin={{ left: 10, right: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                            <XAxis type="number" domain={[-100, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
+                            <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={110} />
+                            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(value, name, props) => [formatValue(props.payload.actual, props.payload.unit), props.payload.name]} />
+                            <ReferenceLine x={0} stroke="#94a3b8" strokeWidth={1} />
+                            <Bar dataKey="value" radius={[0,6,6,0]} animationDuration={800} barSize={20}>
+                              {radialData.map((d, i) => (<Cell key={i} fill={d.value < 0 ? "#ef4444" : d.fill} />))}
+                            </Bar>
                           </BarChart>
                         </ResponsiveContainer>
-                      ) : (
-                        <p className="text-sm text-slate-400 text-center py-10">No revenue data available</p>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Charts Row 2 — Margin Trend + EPS Trend */}
-            {!loading && kpis.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Margin Trend Area Chart */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <h3 className="text-sm font-bold text-slate-700 mb-4">Margin Trends Over Time</h3>
-                  {marginData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={280}>
-                      <LineChart data={marginData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                        <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} unit="%" />
-                        <Tooltip
-                          contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                          formatter={(value) => [`${value?.toFixed(1)}%`]}
-                        />
-                        <Legend wrapperStyle={{ fontSize: 11 }} />
-                        {marginSeries.map((name, i) => (
-                          <Line
-                            key={name}
-                            type="monotone"
-                            dataKey={name}
-                            stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                            strokeWidth={2}
-                            dot={{ r: 3 }}
-                            activeDot={{ r: 5, strokeWidth: 0 }}
-                            connectNulls
-                            animationDuration={800}
-                          />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <p className="text-sm text-slate-400 text-center py-10">No margin data found</p>
-                  )}
-                </div>
-
-                {/* EPS Trend Line Chart */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <h3 className="text-sm font-bold text-slate-700 mb-4">EPS Trends Over Time</h3>
-                  {epsData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={280}>
-                      <LineChart data={epsData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                        <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip
-                          contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                          formatter={(value) => [`$${value?.toFixed(2)}`]}
-                        />
-                        <Legend wrapperStyle={{ fontSize: 11 }} />
-                        {epsClients.map((name, i) => (
-                          <Line
-                            key={name}
-                            type="monotone"
-                            dataKey={name}
-                            stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                            strokeWidth={2}
-                            dot={{ r: 3 }}
-                            activeDot={{ r: 5, strokeWidth: 0 }}
-                            connectNulls
-                            animationDuration={800}
-                          />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <p className="text-sm text-slate-400 text-center py-10">No EPS data found</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Charts Row 3 — Distribution Charts + Heatmap */}
-            {!loading && kpis.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* KPI Distribution Pie */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <h3 className="text-sm font-bold text-slate-700 mb-4">KPI Distribution</h3>
-                  <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
-                      <Pie
-                        data={kpiDistribution}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={85}
-                        paddingAngle={3}
-                        dataKey="value"
-                        animationDuration={800}
-                      >
-                        {kpiDistribution.map((_, i) => (
-                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                        formatter={(value, name) => [`${value} entries`, name]}
-                      />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Confidence Distribution */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <h3 className="text-sm font-bold text-slate-700 mb-4">Data Confidence</h3>
-                  <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
-                      <Pie
-                        data={confidenceDist}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={85}
-                        paddingAngle={3}
-                        dataKey="value"
-                        animationDuration={800}
-                      >
-                        {confidenceDist.map((entry, i) => (
-                          <Cell key={i} fill={CONF_COLORS[entry.name] ?? "#94a3b8"} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                        formatter={(value, name) => [`${value} KPIs`, name]}
-                      />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* QoQ Change Heatmap */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <h3 className="text-sm font-bold text-slate-700 mb-4">QoQ Performance Changes</h3>
-                  {heatmapData.length > 0 ? (
-                    <div className="overflow-y-auto max-h-[240px] space-y-2">
-                      {heatmapData.slice(0, 12).map((row, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-slate-700 truncate">{row.client}</p>
-                            <p className="text-[10px] text-slate-400 truncate">{row.kpi}</p>
-                          </div>
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg whitespace-nowrap ${
-                            row.change > 0 ? "text-green-700 bg-green-50" :
-                            row.change < 0 ? "text-red-700 bg-red-50" :
-                            "text-slate-500 bg-slate-50"
-                          }`}>
-                            {row.change > 0 ? "+" : ""}{row.change}%
-                          </span>
-                        </div>
-                      ))}
+                      ) : <p className="text-sm text-slate-400 text-center py-10">No KPI data for gauges</p>}
                     </div>
-                  ) : (
-                    <p className="text-sm text-slate-400 text-center py-10">Need multiple quarters for comparison</p>
-                  )}
-                </div>
-              </div>
-            )}
+                  );
+                  case "kpi-landscape": return treemapData.length > 0 ? (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                      <h3 className="text-sm font-bold text-slate-700 mb-1">KPI Landscape</h3>
+                      <p className="text-[11px] text-slate-400 mb-4">Size = absolute KPI value · Hover for details</p>
+                      <ResponsiveContainer width="100%" height={320}>
+                        <Treemap data={treemapData} dataKey="size" nameKey="name" stroke="#fff" animationDuration={800}
+                          content={({ x, y, width, height, shortName, client }) => {
+                            if (width < 40 || height < 28) return null;
+                            return (
+                              <g>
+                                <rect x={x} y={y} width={width} height={height} rx={6} fill={client === treemapData[0]?.client ? "#4f6ef7" : "#10b981"} opacity={0.8} stroke="#fff" strokeWidth={2} />
+                                {width > 60 && height > 38 && (<><text x={x+8} y={y+18} fill="#fff" fontSize={11} fontWeight="600">{shortName?.length > 14 ? shortName.slice(0,12)+"…" : shortName}</text><text x={x+8} y={y+32} fill="rgba(255,255,255,0.75)" fontSize={9}>{client}</text></>)}
+                              </g>
+                            );
+                          }}>
+                          <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(value, name, props) => [formatValue(props.payload.actual, props.payload.unit), props.payload.shortName]} labelFormatter={(l) => l} />
+                        </Treemap>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : null;
+                  default: {
+                    if (!id.startsWith("pin:")) return null;
+                    const pinName = id.slice(4);
+                    const pinUnit = chartOrder.find((c) => c.id === id)?.unit ?? "";
+                    const pinIsPercent = pinUnit?.toLowerCase().includes("%");
+                    const pinFmt = pinIsPercent ? (v) => `${v?.toFixed(2)}%` : (v) => `${v?.toLocaleString()}${pinUnit ? " " + pinUnit : ""}`;
+                    const pinByPeriod = {};
+                    for (const k of kpis) {
+                      if (k.name !== pinName || k.value == null) continue;
+                      const period = `${k.quarter} ${k.year}`;
+                      if (!pinByPeriod[period]) pinByPeriod[period] = { period, _s: k.year * 10 + parseInt(k.quarter?.replace(/\D/g, "") || 0, 10) };
+                      const cn = clients.find((c) => c.id === k.clientId)?.name ?? "Unknown";
+                      pinByPeriod[period][cn] = k.value;
+                    }
+                    const pinData = Object.values(pinByPeriod).sort((a, b) => a._s - b._s);
+                    const pinSeries = [...new Set(kpis.filter((k) => k.name === pinName && k.value != null).map((k) => clients.find((c) => c.id === k.clientId)?.name ?? "Unknown"))];
+                    if (pinData.length === 0) return null;
+                    return (
+                      <div className="bg-white rounded-2xl border border-slate-100 p-6 h-full">
+                        <div className="flex items-start justify-between mb-1">
+                          <div>
+                            <h3 className="text-sm font-bold text-slate-700">{pinName}</h3>
+                            <p className="text-[11px] text-slate-400">Pinned KPI · {pinSeries.length} company{pinSeries.length !== 1 ? "ies" : ""}</p>
+                          </div>
+                          <span className="text-[10px] bg-indigo-50 text-indigo-500 font-semibold px-2 py-0.5 rounded-full">Pinned</span>
+                        </div>
+                        <ResponsiveContainer width="100%" height={260}>
+                          <LineChart data={pinData} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} tickFormatter={pinIsPercent ? (v) => `${v}%` : undefined} width={pinIsPercent ? 40 : 60} />
+                            <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} formatter={(v, n) => [pinFmt(v), n]} />
+                            <Legend wrapperStyle={{ fontSize: 11 }} />
+                            {pinSeries.map((name, i) => (
+                              <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2.5} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6, strokeWidth: 0 }} connectNulls animationDuration={600} />
+                            ))}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    );
+                  }
+                }
+              };
 
-            {/* Charts Row 4 — Composed Revenue+Margin + Radial KPI Gauges */}
-            {!loading && kpis.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Composed Chart — Revenue bars + Margin lines */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <h3 className="text-sm font-bold text-slate-700 mb-1">Revenue vs Margins</h3>
-                  <p className="text-[11px] text-slate-400 mb-4">Bars = Revenue ($M) · Lines = Margin (%)</p>
-                  {composedData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <ComposedChart data={composedData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                        <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-                        <YAxis yAxisId="revenue" tick={{ fontSize: 11 }} orientation="left" label={{ value: "$M", angle: -90, position: "insideLeft", style: { fontSize: 10, fill: "#94a3b8" } }} />
-                        <YAxis yAxisId="margin" tick={{ fontSize: 11 }} orientation="right" unit="%" label={{ value: "%", angle: 90, position: "insideRight", style: { fontSize: 10, fill: "#94a3b8" } }} />
-                        <Tooltip
-                          contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                          formatter={(value, name) => {
-                            if (name.includes("Revenue")) return [`$${value?.toLocaleString()}M`, name];
-                            return [`${value?.toFixed(1)}%`, name];
-                          }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: 11 }} />
-                        {revenueSeries.map((name, i) => (
-                          <Bar key={name} yAxisId="revenue" dataKey={name} fill={CHART_COLORS[i % CHART_COLORS.length]} radius={[4, 4, 0, 0]} barSize={28} opacity={0.85} animationDuration={800} />
-                        ))}
-                        {composedMarginSeries.map((name, i) => (
-                          <Line key={name} yAxisId="margin" type="monotone" dataKey={name} stroke={CHART_COLORS[(revenueSeries.length + i) % CHART_COLORS.length]} strokeWidth={2.5} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} connectNulls animationDuration={800} />
-                        ))}
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <p className="text-sm text-slate-400 text-center py-10">No revenue/margin data for composed view</p>
-                  )}
-                </div>
+              const visibleCharts = chartOrder.filter((c) => renderChart(c.id) !== null);
 
-                {/* KPI Gauges — horizontal bars with negative support */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                  <h3 className="text-sm font-bold text-slate-700 mb-1">KPI Gauges</h3>
-                  <p className="text-[11px] text-slate-400 mb-4">Latest values · Margins vs target (Gross 60%, Net 30%)</p>
-                  {radialData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={radialData} layout="vertical" margin={{ left: 10, right: 10 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                        <XAxis type="number" domain={[-100, 100]} tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} />
-                        <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={110} />
-                        <Tooltip
-                          contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                          formatter={(value, name, props) => {
-                            const d = props.payload;
-                            return [formatValue(d.actual, d.unit), d.name];
-                          }}
-                        />
-                        <ReferenceLine x={0} stroke="#94a3b8" strokeWidth={1} />
-                        <Bar dataKey="value" radius={[0, 6, 6, 0]} animationDuration={800} barSize={20}>
-                          {radialData.map((d, i) => (
-                            <Cell key={i} fill={d.value < 0 ? "#ef4444" : d.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <p className="text-sm text-slate-400 text-center py-10">No KPI data for gauges</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Charts Row 5 — Treemap */}
-            {!loading && kpis.length > 0 && treemapData.length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                <h3 className="text-sm font-bold text-slate-700 mb-1">KPI Landscape</h3>
-                <p className="text-[11px] text-slate-400 mb-4">Size = absolute KPI value · Hover for details</p>
-                <ResponsiveContainer width="100%" height={320}>
-                  <Treemap
-                    data={treemapData}
-                    dataKey="size"
-                    nameKey="name"
-                    stroke="#fff"
-                    animationDuration={800}
-                    content={({ x, y, width, height, name, shortName, client }) => {
-                      if (width < 40 || height < 28) return null;
-                      return (
-                        <g>
-                          <rect x={x} y={y} width={width} height={height} rx={6} fill="currentColor" className="text-slate-100" stroke="#fff" strokeWidth={2} />
-                          <rect x={x} y={y} width={width} height={height} rx={6} fill={client === treemapData[0]?.client ? "#4f6ef7" : "#10b981"} opacity={0.8} stroke="#fff" strokeWidth={2} />
-                          {width > 60 && height > 38 && (
-                            <>
-                              <text x={x + 8} y={y + 18} fill="#fff" fontSize={11} fontWeight="600">{shortName?.length > 14 ? shortName.slice(0, 12) + "…" : shortName}</text>
-                              <text x={x + 8} y={y + 32} fill="rgba(255,255,255,0.75)" fontSize={9}>{client}</text>
-                            </>
-                          )}
-                        </g>
-                      );
-                    }}
-                  >
-                    <Tooltip
-                      contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                      formatter={(value, name, props) => {
-                        const d = props.payload;
-                        return [formatValue(d.actual, d.unit), d.shortName];
-                      }}
-                      labelFormatter={(label) => label}
-                    />
-                  </Treemap>
-                </ResponsiveContainer>
-              </div>
-            )}
+              return (
+                <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragStart={({ active }) => setActiveDragId(active.id)} onDragEnd={handleDragEnd}>
+                  <SortableContext items={visibleCharts.map((c) => c.id)} strategy={rectSortingStrategy}>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {visibleCharts.map((c) => {
+                        const content = renderChart(c.id);
+                        if (!content) return null;
+                        return (
+                          <SortableChartCard
+                            key={c.id}
+                            id={c.id}
+                            span={c.span}
+                            onUnpin={c.id.startsWith("pin:") ? () => handleUnpinKPI(c.id.slice(4)) : undefined}
+                          >
+                            {content}
+                          </SortableChartCard>
+                        );
+                      })}
+                    </div>
+                  </SortableContext>
+                  <DragOverlay>
+                    {activeDragId ? (
+                      <div className="opacity-90 shadow-2xl rounded-2xl ring-2 ring-indigo-400">
+                        {renderChart(activeDragId)}
+                      </div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              );
+            })()}
 
             {/* Full KPI Table — filtered by company, top 20, with delete */}
             {!loading && kpis.length > 0 && (
@@ -1557,6 +1778,7 @@ export default function HomePage({ demoData } = {}) {
                 selectedClientId={selectedClientId}
                 onDelete={(ids) => handleDeleteKPIs(ids)}
                 onDeleteAll={handleDeleteAll}
+                onChartClick={(target) => setKpiChartTarget(target)}
               />
             )}
           </div>
@@ -1576,6 +1798,19 @@ export default function HomePage({ demoData } = {}) {
 
       {toast && (
         <Toast message={toast.message} type={toast.type} duration={toast.duration} onClose={() => setToast(null)} />
+      )}
+
+      {kpiChartTarget && (
+        <KPIChartModal
+          kpiName={kpiChartTarget.name}
+          unit={kpiChartTarget.unit}
+          allKpis={kpis}
+          clients={clients}
+          isPinned={chartOrder.some((c) => c.id === `pin:${kpiChartTarget.name}`)}
+          onPin={() => handlePinKPI(kpiChartTarget.name, kpiChartTarget.unit)}
+          onUnpin={() => handleUnpinKPI(kpiChartTarget.name)}
+          onClose={() => setKpiChartTarget(null)}
+        />
       )}
     </div>
   );

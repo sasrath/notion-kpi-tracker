@@ -9,28 +9,34 @@
 ## ✨ Features
 
 - 🤖 **AI Report Ingestion** — paste a URL or drag-and-drop a PDF, AI extracts KPIs automatically
-- 📊 **Interactive Dashboard** — 9+ chart types (Area, Bar, Line, Pie, Heatmap, Treemap, Composed & more)
+- 📊 **Interactive Dashboard** — 11+ chart types (Area, Bar, Line, Pie, Heatmap, Treemap, Composed & more)
 - 🔮 **AI Revenue Forecasting** — trend-based next-quarter revenue predictions per client
 - 🧠 **Multi-Model AI** — choose from 5 models: Gemini 2.5 Flash/Pro, Claude Haiku 4.5, Sonnet 4.5/4.6
 - ✋ **Human-in-the-Loop** — review and edit extracted KPIs before anything saves to Notion
+- 🔄 **Drag-and-Drop Charts** — reorder dashboard charts by dragging; order persists across sessions
+- 📌 **Pin KPI Charts** — click any KPI in the table to view its trend, then pin it to the dashboard
 - ➕ **Custom KPIs** — manually add metrics the AI missed
 - 💬 **Ask AI** — query your data in natural language
 - 📈 **All Clients Aggregation** — summary cards intelligently aggregate across all clients
+- 💰 **Smart $B Formatting** — revenue values ≥ $1,000M auto-display as $B (e.g., $12.7B)
+- 🔄 **Auto-Refresh** — dashboard polls every 30s and refreshes on tab focus
 - 🔒 **Secure** — API keys never touch the browser; prompt injection detection built-in
 
 ---
 
 ## 🖼️ Dashboard Preview
 
-The dashboard includes 5 rows of charts:
+The dashboard includes 11+ drag-and-drop charts:
 
-| Row | Charts |
-|-----|--------|
-| 1 | Revenue Trend (Area) · Revenue Distribution (Pie) |
-| 2 | Margin Trends (Line) · EPS Trends Over Time (Line) |
-| 3 | Quarterly Revenue Comparison (Bar) · Confidence Distribution (Pie) |
-| 4 | Revenue Heatmap · Financial Overview (Composed) |
-| 5 | Revenue Forecast (Bar) · Revenue Treemap |
+| Charts |
+|--------|
+| Revenue Trend (Area) · Revenue Forecast AI (Bar) |
+| Margin Trends (Line) · EPS Trends (Line) |
+| Segment Revenue Breakdown (Stacked Bar, span 2) |
+| KPI Distribution (Pie) · Confidence Distribution (Pie) |
+| QoQ Performance Heatmap · Revenue vs Margins (Composed) |
+| KPI Gauges (Horizontal Bar) · KPI Landscape (Treemap, span 2) |
+| + User-Pinned KPI Charts (dynamic, from KPI table) |
 
 ---
 
@@ -159,7 +165,7 @@ notion-kpi-tracker/
 │   ├── llm.js                  # Multi-model AI (Gemini + Claude), safeParseJSON
 │   ├── notion.js               # Notion API client (direct SDK)
 │   ├── notion-mcp.js           # Notion MCP client (21 tools, hybrid)
-│   ├── transforms.js           # 18 data transform functions for charts
+│   ├── transforms.js           # 19 data transform functions for charts
 │   ├── cache.js                # In-memory cache (5 min TTL) with invalidation
 │   └── demo-data.js            # Static demo datasets (Intel/Apple/Nvidia)
 ├── lib/tests/
@@ -205,7 +211,8 @@ node lib/tests/test-json-repair.mjs
 |---|---|
 | Framework | Next.js 15.1 (App Router) |
 | Frontend | React 19, Tailwind CSS 3.4 |
-| Charts | Recharts 2.13 (9+ chart types) |
+| Charts | Recharts 2.13 (11+ chart types) |
+| Drag-and-Drop | @dnd-kit/core + @dnd-kit/sortable |
 | AI (default) | Google Gemini 2.5 Flash |
 | AI (alternative) | Anthropic Claude Haiku 4.5 / Sonnet 4.5 / Sonnet 4.6 |
 | Backend/DB | Notion (via MCP + direct SDK, hybrid approach) |
