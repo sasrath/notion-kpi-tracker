@@ -1123,6 +1123,9 @@ export default function HomePage({ demoData } = {}) {
   const [activeDragId, setActiveDragId] = useState(null);
   const [kpiChartTarget, setKpiChartTarget] = useState(null); // { name, unit }
 
+  // ✅ Works in client components — NEXT_PUBLIC_ prefix is required
+  const isDemoMode = !!demoData || process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
   function handlePinKPI(name, unit) {
     const id = `pin:${name}`;
     setChartOrder((prev) => {
@@ -1342,7 +1345,7 @@ export default function HomePage({ demoData } = {}) {
           <span className="text-xs text-slate-400 hidden sm:block">Powered by Notion MCP</span>
         </div>
         <div className="flex items-center gap-4">
-          {demoData && (
+          {isDemoMode && (
             <span className="text-xs bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full font-semibold">
               Static Demo
             </span>
@@ -1360,12 +1363,12 @@ export default function HomePage({ demoData } = {}) {
               ))}
             </select>
           )}
-          {lastSync && !demoData && (
+          {lastSync && !isDemoMode && (
             <span className="text-xs text-slate-400 hidden sm:block">
               Synced {lastSync.toLocaleTimeString()}
             </span>
           )}
-          {!demoData && (
+          {!isDemoMode && (
             <button
               onClick={fetchData}
               className="text-sm text-brand-500 hover:text-brand-700 font-medium"

@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { getKPIs } from "@/lib/notion";
 import { kpiCache, CACHE_TTL } from "@/lib/cache";
+import { DEMO_KPIS } from "@/lib/demo-data";
 
 export async function GET(request) {
+  // ✅ Server-side demo mode check — no NEXT_PUBLIC_ prefix needed here
+  const isDemoMode =
+    process.env.DEMO_MODE === "true" ||
+    process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  if (isDemoMode) {
+    return NextResponse.json({ kpis: DEMO_KPIS, demo: true });
+  }
+
   const { searchParams } = new URL(request.url);
   const clientId = searchParams.get("clientId") ?? undefined;
   const quarter  = searchParams.get("quarter")  ?? undefined;
