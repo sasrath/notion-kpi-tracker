@@ -1,7 +1,7 @@
-# 🎬 Demo Video Script — notion-kpi.sasrath.com
+# 🎬 Demo Video Script — notion-kpi.{your_domain}
 ### KPI Tracker — Notion MCP Challenge Demo
 
-> **Recording URL:** https://notion-kpi.sasrath.com  
+> **Recording URL:** https://notion-kpi.{your_domain}  
 > **Total suggested runtime:** 8–10 minutes  
 > **Format:** Screen record + voiceover  
 > **Note:** All services used are **free tier**. Limitations listed at the end of this script.
@@ -20,7 +20,7 @@
 
 ## SCENE 1 — Opening (30 seconds)
 
-`[ACTION]` Open browser to `https://notion-kpi.sasrath.com`. Let the dashboard load fully.
+`[ACTION]` Open browser to `https://notion-kpi.{your_domain}`. Let the dashboard load fully.
 
 `[SAY]`  
 > "Welcome. What you're looking at is a **KPI Tracker** — an AI-powered client quarterly performance dashboard where **Notion is the entire backend**. No traditional database. No SQL. Just Notion, connected via the official Model Context Protocol."
@@ -255,7 +255,7 @@
 
 ## 📋 Checklist Before Recording
 
-- [ ] `https://notion-kpi.sasrath.com` loads cleanly
+- [ ] `https://notion-kpi.{your_domain}` loads cleanly
 - [ ] At least 2–3 clients already ingested with 2+ quarters each
 - [ ] AI model set to Gemini 2.5 Flash (default)
 - [ ] Browser zoom at 100%, dev tools closed

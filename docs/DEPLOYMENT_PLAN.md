@@ -5,7 +5,7 @@
 - **Port**: 3010 (local dev)
 - **Backend**: Notion DB via MCP (local) / direct SDK (Vercel)
 - **AI**: Google Gemini + Anthropic Claude (multi-model)
-- **Domain**: sasrath.com
+- **Domain**: {your_domain}
 
 ---
 
@@ -14,14 +14,14 @@
 | Route | Purpose | AI Access | Data Source | Auth |
 |-------|---------|-----------|-------------|------|
 | `/` | Main dashboard (existing) | Full | Notion (live) | — |
-| `/demo` | Static showcase for notion-kpi.sasrath.com | **None** | Hardcoded (Intel, Apple, Nvidia 10-Q/10-K 2025-26) | — |
+| `/demo` | Static showcase for notion-kpi.{your_domain} | **None** | Hardcoded (Intel, Apple, Nvidia 10-Q/10-K 2025-26) | — |
 
 ### `/demo` — Static Showcase
 - Hardcoded KPI data for Intel, Apple, Nvidia (FY 2025-26 quarterly)
 - All charts render from static data — no API calls
 - No "Add Report", "Custom KPI", or "Ask AI" tabs
 - Read-only: no delete, no ingest, no forecast
-- Suitable for embedding / iframe on sasrath.com
+- Suitable for embedding / iframe on {your_domain}
 
 ---
 
@@ -56,10 +56,10 @@ npm run dev          # runs on port 3010
   - `GOOGLE_API_KEY`, `ANTHROPIC_API_KEY`
   - `NOTION_MODE=sdk` (auto-detected on Vercel)
 
-### 3. Custom Domain (sasrath.com)
+### 3. Custom Domain ({your_domain})
 - Add custom domain in Vercel project settings
 - Point DNS (CNAME or A record) to Vercel
-- `/demo` page serves as the public-facing showcase at notion-kpi.sasrath.com
+- `/demo` page serves as the public-facing showcase at notion-kpi.{your_domain}
 
 ### 4. Function Timeouts (vercel.json)
 Already configured:
