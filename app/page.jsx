@@ -695,7 +695,7 @@ function CustomKPIPanel({ clients, onSuccess }) {
 
 const PAGE_SIZE = 20;
 
-function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll, onChartClick }) {
+function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll, onChartClick, readOnly = false }) {
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState(new Set());
   const [deleting, setDeleting] = useState(false);
@@ -766,7 +766,7 @@ function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll, onCh
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {selected.size > 0 && (
+          {!readOnly && selected.size > 0 && (
             <button
               onClick={handleBulkDelete}
               disabled={deleting}
@@ -775,28 +775,32 @@ function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll, onCh
               {deleting ? "Deleting…" : `Delete ${selected.size} selected`}
             </button>
           )}
-          <button
-            onClick={onDeleteAll}
-            disabled={deleting}
-            className="border border-red-300 text-red-500 hover:bg-red-50 disabled:opacity-50 text-xs font-semibold rounded-lg px-3 py-1.5"
-          >
-            Delete All
-          </button>
+          {!readOnly && (
+            <button
+              onClick={onDeleteAll}
+              disabled={deleting}
+              className="border border-red-300 text-red-500 hover:bg-red-50 disabled:opacity-50 text-xs font-semibold rounded-lg px-3 py-1.5"
+            >
+              Delete All
+            </button>
+          )}
         </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wide">
-              <th className="text-left px-4 py-3 w-8">
-                <input
-                  type="checkbox"
-                  checked={pageKPIs.length > 0 && selected.size === pageKPIs.length}
-                  onChange={toggleAll}
-                  className="rounded border-slate-300"
-                />
-              </th>
-              {["Client","KPI","Value","Unit","Quarter","Year","Source","_chart","_delete"].map((h) => (
+              {!readOnly && (
+                <th className="text-left px-4 py-3 w-8">
+                  <input
+                    type="checkbox"
+                    checked={pageKPIs.length > 0 && selected.size === pageKPIs.length}
+                    onChange={toggleAll}
+                    className="rounded border-slate-300"
+                  />
+                </th>
+              )}
+              {["Client","KPI","Value","Unit","Quarter","Year","Source","_chart",...(!readOnly ? ["_delete"] : [])].map((h) => (
                 <th key={h} className="text-left px-4 py-3">{h.startsWith("_") ? "" : h}</th>
               ))}
             </tr>
@@ -806,14 +810,16 @@ function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll, onCh
               const cn = clients.find((c) => c.id === kpi.clientId)?.name ?? "Unknown";
               return (
                 <tr key={kpi.id} className={`border-t border-slate-50 hover:bg-slate-50 ${selected.has(kpi.id) ? "bg-blue-50/50" : ""}`}>
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(kpi.id)}
-                      onChange={() => toggleSelect(kpi.id)}
-                      className="rounded border-slate-300"
-                    />
-                  </td>
+                  {!readOnly && (
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(kpi.id)}
+                        onChange={() => toggleSelect(kpi.id)}
+                        className="rounded border-slate-300"
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3 font-medium text-slate-700">{cn}</td>
                   <td className="px-4 py-3 text-slate-600">{kpi.name}</td>
                   <td className="px-4 py-3 font-mono text-slate-800">{formatValue(kpi.value, kpi.unit)}</td>
@@ -837,16 +843,18 @@ function KPITable({ kpis, clients, selectedClientId, onDelete, onDeleteAll, onCh
                       </svg>
                     </button>
                   </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleSingleDelete(kpi.id)}
-                      disabled={deleting}
-                      className="text-red-400 hover:text-red-600 disabled:opacity-30 text-xs font-medium"
-                      title="Delete this KPI"
-                    >
-                      🗑
-                    </button>
-                  </td>
+                  {!readOnly && (
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleSingleDelete(kpi.id)}
+                        disabled={deleting}
+                        className="text-red-400 hover:text-red-600 disabled:opacity-30 text-xs font-medium"
+                        title="Delete this KPI"
+                      >
+                        🗑
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -1335,9 +1343,12 @@ export default function HomePage({ demoData } = {}) {
 
   const tabs = [
     { id: "dashboard", label: "Dashboard" },
-    { id: "add",       label: "Add Report" },
-    { id: "custom",    label: "Custom KPI" },
-    { id: "query",     label: "Ask AI" },
+    // Hide write/AI tabs in demo/static mode — no API calls allowed
+    ...(!isDemoMode ? [
+      { id: "add",    label: "Add Report" },
+      { id: "custom", label: "Custom KPI" },
+      { id: "query",  label: "Ask AI" },
+    ] : []),
   ];
 
   return (
@@ -1787,21 +1798,26 @@ export default function HomePage({ demoData } = {}) {
                 onDelete={(ids) => handleDeleteKPIs(ids)}
                 onDeleteAll={handleDeleteAll}
                 onChartClick={(target) => setKpiChartTarget(target)}
+                readOnly={isDemoMode}
               />
             )}
           </div>
         )}
 
-        {/* Always mount Add Report so async processing survives tab switches */}
-        <div className={activeTab === "add" ? "" : "hidden"}>
-          <AddReportPanel clients={clients} onSuccess={handleSuccess} selectedModel={selectedModel} />
-        </div>
-        <div className={activeTab === "custom" ? "" : "hidden"}>
-          <CustomKPIPanel clients={activeClients} onSuccess={handleSuccess} />
-        </div>
-        <div className={activeTab === "query" ? "" : "hidden"}>
-          <QueryPanel selectedModel={selectedModel} demoData={demoData} />
-        </div>
+        {/* Write/AI panels — omitted entirely in demo mode */}
+        {!isDemoMode && (
+          <>
+            <div className={activeTab === "add" ? "" : "hidden"}>
+              <AddReportPanel clients={clients} onSuccess={handleSuccess} selectedModel={selectedModel} />
+            </div>
+            <div className={activeTab === "custom" ? "" : "hidden"}>
+              <CustomKPIPanel clients={activeClients} onSuccess={handleSuccess} />
+            </div>
+            <div className={activeTab === "query" ? "" : "hidden"}>
+              <QueryPanel selectedModel={selectedModel} demoData={demoData} />
+            </div>
+          </>
+        )}
       </div>
 
       {toast && (
