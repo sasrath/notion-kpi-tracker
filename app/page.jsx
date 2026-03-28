@@ -1117,7 +1117,7 @@ function QueryPanel({ selectedModel, demoData }) {
 
 // ─── MAIN PAGE ───────────────────────────────────────────────────
 
-export default function HomePage({ demoData } = {}) {
+export default function HomePage({ demoData, fullFeatures = false } = {}) {
   const [clients, setClients] = useState([]);
   const [kpis, setKPIs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1136,7 +1136,8 @@ export default function HomePage({ demoData } = {}) {
   const [kpiChartTarget, setKpiChartTarget] = useState(null); // { name, unit }
 
   // ✅ Works in client components — NEXT_PUBLIC_ prefix is required
-  const isDemoMode = !!demoData || IS_DEMO_MODE;
+  // fullFeatures=true (e.g. /judges) overrides IS_DEMO_MODE so all tabs/actions are always shown
+  const isDemoMode = !fullFeatures && (!!demoData || IS_DEMO_MODE);
 
   function handlePinKPI(name, unit) {
     const id = `pin:${name}`;

@@ -49,7 +49,7 @@ export default function JudgesPage() {
     <div className="flex flex-col min-h-screen">
       <JudgesBanner />
       <div className="flex-1">
-        <HomePage />
+        <HomePage fullFeatures />
       </div>
     </div>
   );
