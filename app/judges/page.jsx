@@ -1,7 +1,6 @@
 "use client";
 
 import HomePage from "@/app/page";
-import { DEMO_CLIENTS, DEMO_KPIS } from "@/lib/demo-data";
 
 // ─── JUDGES BANNER ───────────────────────────────────────────────
 // Rendered above the full dashboard. Informs judges that:
@@ -21,13 +20,13 @@ function JudgesBanner() {
           </span>
           <span className="text-indigo-200 mx-2">·</span>
           <span className="text-indigo-200 text-xs">
-            Static demo data · Intel / Apple / Nvidia · FY 2025
+            Live Notion data · All features enabled
           </span>
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
         <span className="bg-indigo-600 border border-indigo-400 text-indigo-100 text-xs px-3 py-1 rounded-full font-medium">
-          Free API · Functionality limited
+          Full Features
         </span>
         <a
           href="https://github.com/sasrath/notion-kpi-tracker"
@@ -43,15 +42,14 @@ function JudgesBanner() {
 }
 
 // ─── JUDGES PAGE ─────────────────────────────────────────────────
-// Full dashboard rendered with static Intel / Apple / Nvidia demo data.
-// No Notion API calls are made — all reads/writes are mocked locally.
+// Full dashboard with live Notion data and all features enabled.
 // AI features (forecast, Ask AI) use real Gemini free-tier API keys.
 export default function JudgesPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <JudgesBanner />
       <div className="flex-1">
-        <HomePage demoData={{ kpis: DEMO_KPIS, clients: DEMO_CLIENTS }} />
+        <HomePage />
       </div>
     </div>
   );
