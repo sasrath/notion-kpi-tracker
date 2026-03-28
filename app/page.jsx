@@ -23,6 +23,10 @@ import {
   SortableContext, useSortable, arrayMove, rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { DEMO_CLIENTS, DEMO_KPIS } from "@/lib/demo-data";
+
+// Baked in at build time — safe to read at module scope in a client component
+const IS_DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 // ─── COLOURS for charts ───────────────────────────────────────────
 const CHART_COLORS = [
@@ -1124,7 +1128,7 @@ export default function HomePage({ demoData } = {}) {
   const [kpiChartTarget, setKpiChartTarget] = useState(null); // { name, unit }
 
   // ✅ Works in client components — NEXT_PUBLIC_ prefix is required
-  const isDemoMode = !!demoData || process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const isDemoMode = !!demoData || IS_DEMO_MODE;
 
   function handlePinKPI(name, unit) {
     const id = `pin:${name}`;
@@ -1164,9 +1168,10 @@ export default function HomePage({ demoData } = {}) {
   }
 
   const fetchData = useCallback(async () => {
-    if (demoData) {
-      setClients(demoData.clients);
-      setKPIs(demoData.kpis);
+    // Use static demo data when passed as a prop OR when env var is set
+    if (demoData || IS_DEMO_MODE) {
+      setClients(demoData?.clients ?? DEMO_CLIENTS);
+      setKPIs(demoData?.kpis ?? DEMO_KPIS);
       setLastSync(new Date());
       setLoading(false);
       return;
